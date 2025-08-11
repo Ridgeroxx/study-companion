@@ -56,14 +56,24 @@ class App {
             this.updateLanguageUI();
             this.updateThemeUI();
             
-            // Hide loading screen
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                console.log('Hiding loading screen...');
-                loadingScreen.style.display = 'none';
-            } else {
-                console.warn('Loading screen element not found');
-            }
+            // Hide loading screen with multiple methods
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    console.log('Hiding loading screen...');
+                    loadingScreen.style.display = 'none';
+                    loadingScreen.style.visibility = 'hidden';
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.classList.add('d-none');
+                    setTimeout(() => loadingScreen.remove(), 100);
+                    console.log('Loading screen hidden and removed');
+                } else {
+                    console.warn('Loading screen element not found');
+                }
+                
+                // Also ensure main content is visible
+                document.body.style.overflow = 'auto';
+            }, 100);
             
             // Show onboarding if first run
             if (this.isFirstRun) {
