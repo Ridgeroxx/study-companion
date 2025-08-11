@@ -57,7 +57,13 @@ class App {
             this.updateThemeUI();
             
             // Hide loading screen
-            document.getElementById('loading-screen').style.display = 'none';
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                console.log('Hiding loading screen...');
+                loadingScreen.style.display = 'none';
+            } else {
+                console.warn('Loading screen element not found');
+            }
             
             // Show onboarding if first run
             if (this.isFirstRun) {
