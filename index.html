@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Companion</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS with preflight disabled -->
+    <script>
+        tailwind = { 
+            config: { 
+                corePlugins: { preflight: false } 
+            } 
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+    <!-- Loading screen -->
+    <div id="loading-screen" class="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex align-items-center justify-content-center" style="z-index: 9999;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3" data-i18n="loading">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" data-i18n="app_name">Study Companion</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <!-- Left side nav items -->
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle me-2" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-language"></i> <span id="current-language">EN</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="app.setLanguage('en')">English</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="app.setLanguage('es')">Español</a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <button class="btn btn-outline-secondary me-2" onclick="app.toggleTheme()" id="theme-toggle">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <button class="btn btn-primary dropdown-toggle me-2" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-upload"></i> <span data-i18n="import">Import</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="reader.importEpub()">
+                                <i class="fas fa-book"></i> <span data-i18n="import_epub">Import EPUB</span>
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="reader.importBible()">
+                                <i class="fas fa-cross"></i> <span data-i18n="import_bible">Import Bible</span>
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#importExportModal">
+                                <i class="fas fa-file-import"></i> <span data-i18n="import_data">Import Data</span>
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                            <i class="fas fa-cog"></i> <span data-i18n="settings">Settings</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Left sidebar -->
+            <div class="col-12 col-md-4 border-end bg-light">
+                <div class="p-3">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs" id="leftTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes-pane" type="button" role="tab">
+                                <i class="fas fa-sticky-note"></i> <span data-i18n="notes">Notes</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="meetings-tab" data-bs-toggle="tab" data-bs-target="#meetings-pane" type="button" role="tab">
+                                <i class="fas fa-calendar"></i> <span data-i18n="meetings">Meetings</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="convention-tab" data-bs-toggle="tab" data-bs-target="#convention-pane" type="button" role="tab">
+                                <i class="fas fa-users"></i> <span data-i18n="convention">Convention</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search-pane" type="button" role="tab">
+                                <i class="fas fa-search"></i> <span data-i18n="search">Search</span>
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab content -->
+                    <div class="tab-content" id="leftTabContent">
+                        <!-- Notes tab -->
+                        <div class="tab-pane fade show active" id="notes-pane" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 data-i18n="current_book_notes">Current Book Notes</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="exporter.showExportModal()">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                                <div id="current-book-title" class="text-muted small mb-2"></div>
+                                <div id="notes-list" class="notes-container">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-book-open fa-2x mb-2"></i>
+                                        <p data-i18n="no_book_selected">No book selected. Import an EPUB to get started.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Meetings tab -->
+                        <div class="tab-pane fade" id="meetings-pane" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 data-i18n="upcoming_meetings">Upcoming Meetings</h6>
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
+                                <div id="upcoming-meetings" class="meetings-container">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-plus fa-2x mb-2"></i>
+                                        <p data-i18n="configure_meetings">Configure your meeting schedule in Settings.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Convention tab -->
+                        <div class="tab-pane fade" id="convention-pane" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 data-i18n="convention_sessions">Convention Sessions</h6>
+                                    <button class="btn btn-sm btn-primary" onclick="schedule.addConventionSession()" id="add-session-btn" style="display: none;">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="convention-sessions" class="convention-container">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-users fa-2x mb-2"></i>
+                                        <p data-i18n="enable_convention">Enable Convention Mode in Settings.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Search tab -->
+                        <div class="tab-pane fade" id="search-pane" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="search-input" placeholder="Search..." data-i18n-placeholder="search_placeholder">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="search.performSearch()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Search results tabs -->
+                                <ul class="nav nav-pills nav-fill mb-3" id="search-result-tabs" style="display: none;">
+                                    <li class="nav-item">
+                                        <button class="nav-link active small" id="notes-results-tab" data-bs-toggle="pill" data-bs-target="#notes-results">
+                                            <span data-i18n="notes">Notes</span> <span class="badge bg-secondary" id="notes-count">0</span>
+                                        </button>
+                                    </li>
+                                    <li class="nav-item">
+                                        <button class="nav-link small" id="scriptures-results-tab" data-bs-toggle="pill" data-bs-target="#scriptures-results">
+                                            <span data-i18n="scriptures">Scriptures</span> <span class="badge bg-secondary" id="scriptures-count">0</span>
+                                        </button>
+                                    </li>
+                                    <li class="nav-item">
+                                        <button class="nav-link small" id="publications-results-tab" data-bs-toggle="pill" data-bs-target="#publications-results">
+                                            <span data-i18n="publications">Publications</span> <span class="badge bg-secondary" id="publications-count">0</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                                
+                                <div class="tab-content" id="search-results-content">
+                                    <div class="tab-pane fade show active" id="notes-results"></div>
+                                    <div class="tab-pane fade" id="scriptures-results"></div>
+                                    <div class="tab-pane fade" id="publications-results"></div>
+                                </div>
+                                
+                                <div id="search-empty" class="text-center text-muted py-4">
+                                    <i class="fas fa-search fa-2x mb-2"></i>
+                                    <p data-i18n="search_empty">Enter a search term to find notes, highlights, and scriptures.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right content area -->
+            <div class="col-12 col-md-8">
+                <div class="p-3">
+                    <div id="viewer-header" class="d-flex justify-content-between align-items-center mb-3" style="display: none !important;">
+                        <div>
+                            <h5 id="current-book-title-header" class="mb-0"></h5>
+                            <small id="current-location" class="text-muted"></small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="reader.prevPage()">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="reader.nextPage()">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- EPUB Viewer -->
+                    <div id="viewer" style="height: 70vh; border: 1px solid #ddd; overflow: hidden;">
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                            <div class="text-center">
+                                <i class="fas fa-book-open fa-3x mb-3"></i>
+                                <h5 data-i18n="no_book_open">No book open</h5>
+                                <p data-i18n="import_epub_instruction">Import an EPUB file to start reading and taking notes.</p>
+                                <button class="btn btn-primary" onclick="reader.importEpub()">
+                                    <i class="fas fa-upload"></i> <span data-i18n="import_epub">Import EPUB</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Scripture quick insert -->
+                    <div class="mt-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="scripture-input" placeholder="Type scripture reference (e.g., John 3:16)" data-i18n-placeholder="scripture_placeholder">
+                            <button class="btn btn-outline-secondary" type="button" onclick="scripture.insertScripture()">
+                                <i class="fas fa-plus"></i> <span data-i18n="insert">Insert</span>
+                            </button>
+                        </div>
+                        <div id="scripture-preview" class="mt-2" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Add/Edit Highlight Note Modal -->
+    <div class="modal fade" id="highlightModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="add_note">Add Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="selected_text">Selected Text:</label>
+                        <div id="highlight-quote" class="p-2 bg-light border rounded small"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="highlight-note" class="form-label" data-i18n="note">Note:</label>
+                        <textarea class="form-control" id="highlight-note" rows="4"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="highlight-tags" class="form-label" data-i18n="tags">Tags:</label>
+                        <input type="text" class="form-control" id="highlight-tags" placeholder="comma, separated, tags" data-i18n-placeholder="tags_placeholder">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="delete-highlight-btn" onclick="notes.deleteHighlight()" style="display: none;" data-i18n="delete">Delete</button>
+                    <button type="button" class="btn btn-primary" onclick="notes.saveHighlight()" data-i18n="save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Note Editor Modal -->
+    <div class="modal fade" id="meetingNoteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="meeting_note">Meeting Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="meeting-title" class="form-label" data-i18n="title">Title:</label>
+                        <input type="text" class="form-control" id="meeting-title">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="meeting-date" class="form-label" data-i18n="date">Date:</label>
+                            <input type="date" class="form-control" id="meeting-date">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="meeting-type" class="form-label" data-i18n="type">Type:</label>
+                            <select class="form-control" id="meeting-type">
+                                <option value="Midweek" data-i18n="midweek">Midweek</option>
+                                <option value="Weekend" data-i18n="weekend">Weekend</option>
+                                <option value="Convention" data-i18n="convention">Convention</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Markdown toolbar -->
+                    <div class="btn-toolbar mb-2" role="toolbar">
+                        <div class="btn-group me-2" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="notes.insertMarkdown('**', '**')" title="Bold">
+                                <i class="fas fa-bold"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="notes.insertMarkdown('*', '*')" title="Italic">
+                                <i class="fas fa-italic"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="notes.insertMarkdown('- ', '')" title="List">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="notes.insertScriptureRef()" title="Insert Scripture">
+                                <i class="fas fa-cross"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="meeting-content" class="form-label" data-i18n="content">Content:</label>
+                        <textarea class="form-control" id="meeting-content" rows="10" placeholder="Write your notes in Markdown..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="meeting-tags" class="form-label" data-i18n="tags">Tags:</label>
+                        <input type="text" class="form-control" id="meeting-tags" placeholder="comma, separated, tags">
+                    </div>
+                    
+                    <!-- Preview tab -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit-pane" type="button" role="tab" data-i18n="edit">Edit</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-pane" type="button" role="tab" data-i18n="preview" onclick="notes.updatePreview()">Preview</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 p-3">
+                        <div class="tab-pane fade show active" id="edit-pane" role="tabpanel">
+                            <!-- Content is the textarea above -->
+                        </div>
+                        <div class="tab-pane fade" id="preview-pane" role="tabpanel">
+                            <div id="markdown-preview" class="markdown-content"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="delete-meeting-note-btn" onclick="notes.deleteMeetingNote()" style="display: none;" data-i18n="delete">Delete</button>
+                    <button type="button" class="btn btn-primary" onclick="notes.saveMeetingNote()" data-i18n="save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Convention Session Editor Modal -->
+    <div class="modal fade" id="conventionSessionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="convention_session">Convention Session</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="session-title" class="form-label" data-i18n="title">Title:</label>
+                        <input type="text" class="form-control" id="session-title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="session-speaker" class="form-label" data-i18n="speaker">Speaker:</label>
+                        <input type="text" class="form-control" id="session-speaker">
+                    </div>
+                    <div class="mb-3">
+                        <label for="session-theme" class="form-label" data-i18n="theme">Theme:</label>
+                        <input type="text" class="form-control" id="session-theme">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="session-date" class="form-label" data-i18n="date">Date:</label>
+                            <input type="date" class="form-control" id="session-date">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="session-time" class="form-label" data-i18n="time">Time:</label>
+                            <input type="time" class="form-control" id="session-time">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="delete-session-btn" onclick="schedule.deleteConventionSession()" style="display: none;" data-i18n="delete">Delete</button>
+                    <button type="button" class="btn btn-primary" onclick="schedule.saveConventionSession()" data-i18n="save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Bible Modal -->
+    <div class="modal fade" id="importBibleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="import_bible">Import Bible</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span data-i18n="bible_import_notice">Import your personal Bible EPUB. This will be used for scripture lookups and navigation.</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="file" class="form-control" id="bible-file-input" accept=".epub">
+                    </div>
+                    
+                    <div id="bible-import-progress" style="display: none;">
+                        <div class="mb-2">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="small text-muted" id="bible-import-status"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="reader.processBibleImport()" id="bible-import-btn" data-i18n="import">Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export/Import Modal -->
+    <div class="modal fade" id="importExportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="export_import">Export / Import</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="export-tab" data-bs-toggle="tab" data-bs-target="#export-pane" type="button" role="tab" data-i18n="export">Export</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import-pane" type="button" role="tab" data-i18n="import">Import</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane fade show active" id="export-pane" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 data-i18n="export_options">Export Options</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export-highlights" checked>
+                                        <label class="form-check-label" for="export-highlights" data-i18n="highlights">Highlights</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export-meeting-notes" checked>
+                                        <label class="form-check-label" for="export-meeting-notes" data-i18n="meeting_notes">Meeting Notes</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="export-convention-notes" checked>
+                                        <label class="form-check-label" for="export-convention-notes" data-i18n="convention_notes">Convention Notes</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 data-i18n="export_format">Export Format</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="export-format" id="export-markdown" value="markdown" checked>
+                                        <label class="form-check-label" for="export-markdown">Markdown</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="export-format" id="export-json" value="json">
+                                        <label class="form-check-label" for="export-json">JSON</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="exporter.exportData()">
+                                    <i class="fas fa-download"></i> <span data-i18n="export">Export</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="import-pane" role="tabpanel">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span data-i18n="import_warning">Importing data will merge with existing data. Duplicates will be handled by timestamp.</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="import-file" class="form-label" data-i18n="select_file">Select JSON file:</label>
+                                <input type="file" class="form-control" id="import-file" accept=".json">
+                            </div>
+                            
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="exporter.importData()">
+                                    <i class="fas fa-upload"></i> <span data-i18n="import">Import</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="settings">Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="general-settings-tab" data-bs-toggle="tab" data-bs-target="#general-settings" type="button" role="tab" data-i18n="general">General</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="meetings-settings-tab" data-bs-toggle="tab" data-bs-target="#meetings-settings" type="button" role="tab" data-i18n="meetings">Meetings</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="convention-settings-tab" data-bs-toggle="tab" data-bs-target="#convention-settings" type="button" role="tab" data-i18n="convention">Convention</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="debug-settings-tab" data-bs-toggle="tab" data-bs-target="#debug-settings" type="button" role="tab">Debug</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <!-- General Settings -->
+                        <div class="tab-pane fade show active" id="general-settings" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="settings-language" class="form-label" data-i18n="language">Language:</label>
+                                <select class="form-control" id="settings-language">
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="settings-theme" class="form-label" data-i18n="theme">Theme:</label>
+                                <select class="form-control" id="settings-theme">
+                                    <option value="light" data-i18n="light">Light</option>
+                                    <option value="dark" data-i18n="dark">Dark</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="settings-pwa">
+                                <label class="form-check-label" for="settings-pwa" data-i18n="enable_pwa">Enable offline mode (PWA)</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Meeting Settings -->
+                        <div class="tab-pane fade" id="meetings-settings" role="tabpanel">
+                            <h6 data-i18n="midweek_meetings">Midweek Meetings</h6>
+                            <div id="midweek-schedule" class="mb-4">
+                                <!-- Dynamic content -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mb-3" onclick="schedule.addMeetingTime('midweek')">
+                                <i class="fas fa-plus"></i> <span data-i18n="add_midweek">Add Midweek Meeting</span>
+                            </button>
+                            
+                            <h6 data-i18n="weekend_meetings">Weekend Meetings</h6>
+                            <div id="weekend-schedule" class="mb-4">
+                                <!-- Dynamic content -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('weekend')">
+                                <i class="fas fa-plus"></i> <span data-i18n="add_weekend">Add Weekend Meeting</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Convention Settings -->
+                        <div class="tab-pane fade" id="convention-settings" role="tabpanel">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="convention-enabled">
+                                <label class="form-check-label" for="convention-enabled" data-i18n="enable_convention_mode">Enable Convention Mode</label>
+                            </div>
+                            
+                            <div id="convention-config" style="display: none;">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="convention-start" class="form-label" data-i18n="start_date">Start Date:</label>
+                                        <input type="date" class="form-control" id="convention-start">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="convention-end" class="form-label" data-i18n="end_date">End Date:</label>
+                                        <input type="date" class="form-control" id="convention-end">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Debug Settings -->
+                        <div class="tab-pane fade" id="debug-settings" role="tabpanel">
+                            <h6>Scripture Parser Test</h6>
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="debug-scripture-input" placeholder="Enter scripture reference">
+                                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="scripture.debugParse()">Test Parse</button>
+                            </div>
+                            <div id="debug-output" class="small bg-light p-2 rounded"></div>
+                            
+                            <hr>
+                            
+                            <h6>Data Management</h6>
+                            <button class="btn btn-sm btn-outline-danger" onclick="storage.clearAllData()">Clear All Data</button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="storage.showDataStats()">Show Data Stats</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="app.saveSettings()" data-i18n="save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div class="modal fade" id="onboardingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-i18n="welcome">Welcome to Study Companion</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="nav flex-column nav-pills" id="onboarding-tabs" role="tablist">
+                                <button class="nav-link active" id="step1-tab" data-bs-toggle="pill" data-bs-target="#step1" type="button" role="tab">
+                                    <i class="fas fa-language"></i> <span data-i18n="language">Language</span>
+                                </button>
+                                <button class="nav-link" id="step2-tab" data-bs-toggle="pill" data-bs-target="#step2" type="button" role="tab">
+                                    <i class="fas fa-calendar"></i> <span data-i18n="meetings">Meetings</span>
+                                </button>
+                                <button class="nav-link" id="step3-tab" data-bs-toggle="pill" data-bs-target="#step3" type="button" role="tab">
+                                    <i class="fas fa-users"></i> <span data-i18n="convention">Convention</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="tab-content" id="onboarding-content">
+                                <!-- Step 1: Language -->
+                                <div class="tab-pane fade show active" id="step1" role="tabpanel">
+                                    <h5 data-i18n="choose_language">Choose Your Language</h5>
+                                    <p data-i18n="language_description">Select your preferred language for the interface and scripture parsing.</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card h-100 lang-option" data-lang="en">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-flag-usa fa-2x mb-2"></i>
+                                                    <h6>English</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card h-100 lang-option" data-lang="es">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-flag fa-2x mb-2"></i>
+                                                    <h6>Español</h6>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Step 2: Meeting Schedule -->
+                                <div class="tab-pane fade" id="step2" role="tabpanel">
+                                    <h5 data-i18n="configure_meetings">Configure Your Meeting Schedule</h5>
+                                    <p data-i18n="meeting_description">Set up your congregation's meeting times. You can add multiple meetings for each type.</p>
+                                    
+                                    <h6 data-i18n="midweek_meetings">Midweek Meetings</h6>
+                                    <div id="onboarding-midweek" class="mb-3">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary mb-3" onclick="schedule.addOnboardingMeeting('midweek')">
+                                        <i class="fas fa-plus"></i> <span data-i18n="add_midweek">Add Midweek Meeting</span>
+                                    </button>
+                                    
+                                    <h6 data-i18n="weekend_meetings">Weekend Meetings</h6>
+                                    <div id="onboarding-weekend" class="mb-3">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="schedule.addOnboardingMeeting('weekend')">
+                                        <i class="fas fa-plus"></i> <span data-i18n="add_weekend">Add Weekend Meeting</span>
+                                    </button>
+                                </div>
+                                
+                                <!-- Step 3: Convention (Optional) -->
+                                <div class="tab-pane fade" id="step3" role="tabpanel">
+                                    <h5 data-i18n="convention_setup">Convention Setup (Optional)</h5>
+                                    <p data-i18n="convention_description">Enable convention mode to plan and take notes for upcoming conventions.</p>
+                                    
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="onboarding-convention-enabled">
+                                        <label class="form-check-label" for="onboarding-convention-enabled" data-i18n="enable_convention_mode">Enable Convention Mode</label>
+                                    </div>
+                                    
+                                    <div id="onboarding-convention-config" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label for="onboarding-convention-start" class="form-label" data-i18n="start_date">Start Date:</label>
+                                                <input type="date" class="form-control" id="onboarding-convention-start">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="onboarding-convention-end" class="form-label" data-i18n="end_date">End Date:</label>
+                                                <input type="date" class="form-control" id="onboarding-convention-end">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="onboarding-prev" onclick="app.onboardingPrev()" style="display: none;" data-i18n="previous">Previous</button>
+                    <button type="button" class="btn btn-primary" id="onboarding-next" onclick="app.onboardingNext()" data-i18n="next">Next</button>
+                    <button type="button" class="btn btn-success" id="onboarding-finish" onclick="app.finishOnboarding()" style="display: none;" data-i18n="finish">Finish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="epub-file-input" accept=".epub" style="display: none;">
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- External libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/epub@0.3.88/lib/epub.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://unpkg.com/lunr@2.3.9/lunr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/plugin/utc.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/plugin/timezone.min.js"></script>
+    
+    <!-- App modules -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
