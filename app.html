@@ -100,27 +100,83 @@
       .container-fluid { padding-bottom:1rem; }
     }
   </style>
+  <style>
+  /* keep navbar on one line */
+  .navbar .container-fluid { flex-wrap: nowrap; }
+  .navbar .brand { white-space: nowrap; }
+
+  /* left/right buckets so we can hide the right tools on phones */
+  .navbar .nav-left, .navbar .nav-right { min-width: 0; }
+  .navbar .nav-right { margin-left: auto; }
+
+  /* desktop: show full toolbar, mobile: use a compact dropdown */
+  .navbar .toolbar-desktop { display: flex; gap:.5rem; }
+  .navbar .toolbar-mobile  { display: none; }
+
+  @media (max-width: 576px) {
+    .navbar .toolbar-desktop { display: none; }
+    .navbar .toolbar-mobile  { display: flex; }
+  }
+</style>
 </head>
 <body>
   <div class="shell">
     <nav class="navbar bg-light border-bottom">
-      <div class="container-fluid">
-        <div class="d-flex align-items-center gap-2">
-          <span class="brand">Study Companion</span>
-          <a class="btn btn-outline-primary btn-sm" href="library.html" title="(Optional page)"><i class="fa-solid fa-books"></i></a>
-          <a class="btn btn-outline-primary btn-sm" href="meetings.html" title="(Optional page)"><i class="fa-solid fa-calendar"></i></a>
-          <a class="btn btn-outline-primary btn-sm" href="convention.html" title="(Optional page)"><i class="fa-solid fa-users"></i></a>
+  <div class="container-fluid">
+    <!-- LEFT -->
+    <div class="nav-left d-flex align-items-center gap-2">
+      <span class="brand">Study Companion</span>
+      <a class="btn btn-outline-primary btn-sm" href="library.html" title="Library">
+        <i class="fa-solid fa-books"></i>
+      </a>
+      <a class="btn btn-outline-primary btn-sm" href="meetings.html" title="Meetings">
+        <i class="fa-solid fa-calendar"></i>
+      </a>
+      <a class="btn btn-outline-primary btn-sm" href="convention.html" title="Convention">
+        <i class="fa-solid fa-users"></i>
+      </a>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="nav-right d-flex align-items-center">
+      <!-- Desktop toolbar (shown ≥576px) -->
+      <div class="toolbar-desktop align-items-center">
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="fas fa-language"></i> <span id="current-language">EN</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#" onclick="window.app?.setLanguage('en')">English</a></li>
+            <li><a class="dropdown-item" href="#" onclick="window.app?.setLanguage('es')">Español</a></li>
+          </ul>
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
-          <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
-          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme"><i class="fa-solid fa-moon"></i></button>
-          <!-- made this a link so it always navigates -->
-          <a class="btn btn-sm btn-outline-secondary" id="open-settings" href="settings.html" title="Settings"><i class="fa-solid fa-gear"></i></a>
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings">
+          <i class="fa-solid fa-gear"></i>
+        </a>
+      </div>
+
+      <!-- Mobile toolbar (shown <576px) -->
+      <div class="toolbar-mobile ms-1">
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-label="Menu">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li class="dropdown-header">Quick actions</li>
+            <li><a class="dropdown-item" href="#" onclick="window.app?.setLanguage('en')">English</a></li>
+            <li><a class="dropdown-item" href="#" onclick="window.app?.setLanguage('es')">Español</a></li>
+            <li><a class="dropdown-item" href="#" id="theme-toggle-mobile">Toggle theme</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="settings.html">Settings</a></li>
+          </ul>
         </div>
       </div>
-    </nav>
-
+    </div>
+  </div>
+</nav>
     <aside class="sidebar p-2">
       <div class="small text-muted px-2 pt-2">Search</div>
       <div class="px-2 pb-2">
@@ -264,5 +320,11 @@
       });
     }
   </script>
+  <script>
+  document.getElementById('theme-toggle-mobile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('theme-toggle')?.click();
+  });
+</script>
 </body>
 </html>
