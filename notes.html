@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>All Notes — JW Study Companion</title>
+
+  <!-- Styles -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- PWA (use relative paths so it works on subpaths e.g. GitHub Pages) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#136FF2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- If your icon is project root: -->
+  <link rel="apple-touch-icon" href="logo.png">
+
+  <!-- CSP aligned to the CDNs used (prevents console CSP errors) -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data: blob:;
+          font-src 'self' https://cdnjs.cloudflare.com data:;
+          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+          script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+          connect-src 'self' blob:;
+          worker-src 'self' blob:;
+          object-src 'none';
+          base-uri 'self';
+          upgrade-insecure-requests
+        ">
+
+  <!-- Vendor libs (must be BEFORE your modules) -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://unpkg.com/lunr@2.3.9/lunr.min.js"></script>
+
+  <style>
+    body { background: var(--bs-body-bg); }
+    .note-card{
+      border:1px solid var(--bs-border-color);
+      border-radius:10px;
+      padding:.75rem;
+      margin-bottom:.75rem;
+      background:var(--bs-card-bg);
+    }
+    .tag{
+      display:inline-block;
+      padding:.15rem .45rem;
+      border-radius:.4rem;
+      background:var(--bs-secondary-bg);
+      margin-right:.25rem;
+      font-size:.75rem;
+      cursor:pointer;
+      text-decoration:none;
+    }
+    .tag:hover{ opacity:.9; }
+    .note-actions .btn{ --bs-btn-padding-y:.2rem; --bs-btn-padding-x:.5rem; }
+    .truncate-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* Dark-mode readability improvements */
+    [data-bs-theme="dark"] .text-muted,
+    [data-bs-theme="dark"] .small.text-muted { color: rgba(255,255,255,.72) !important; }
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <nav class="navbar bg-light border-bottom sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <span class="fw-semibold">All Notes</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Language + Theme (wired by app.js) -->
+        <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
+        <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <!-- Mobile filters -->
+        <button class="btn btn-sm btn-outline-secondary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#filtersDrawer" title="Filters">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="container py-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-lg-6">
+        <label class="form-label mb-1">Search</label>
+        <div class="input-group input-group-sm">
+          <input id="q" class="form-control" placeholder="Search notes, quotes, tags…">
+          <button class="btn btn-outline-secondary" id="clear-q"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="form-text">Full-text search (Lunr if available, else substring).</div>
+      </div>
+
+      <div class="col-12 col-lg-6 d-none d-lg-block">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label mb-1">Document</label>
+            <select id="doc-filter" class="form-select form-select-sm"><option value="">All documents</option></select>
+          </div>
+          <div class="col-6">
+            <label class="form-label mb-1">Sort</label>
+            <select id="sort" class="form-select form-select-sm">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" id="only-tagged">
+          <label class="form-check-label small" for="only-tagged">Only notes with tags</label>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-3">
+
+    <div id="notes">Loading…</div>
+  </main>
+
+  <!-- Offcanvas Filters (mobile) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="filtersDrawer">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="fa-solid fa-sliders me-2"></i>Filters</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="mb-3">
+        <label class="form-label">Document</label>
+        <select id="doc-filter-m" class="form-select form-select-sm"><option value="">All documents</option></select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Sort</label>
+        <select id="sort-m" class="form-select form-select-sm">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" id="only-tagged-m">
+        <label class="form-check-label" for="only-tagged-m">Only notes with tags</label>
+      </div>
+      <button class="btn btn-primary w-100" data-bs-dismiss="offcanvas" id="apply-mobile-filters">Apply</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="app-toast-body">Done.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- App (for theme + language wiring) -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { storage } from './js/storage.js';
+
+    const $ = (s, r=document) => r.querySelector(s);
+    const notesBox = $('#notes');
+    const q = $('#q');
+    const clearQ = $('#clear-q');
+
+    // Filters (desktop)
+    const docFilter = $('#doc-filter');
+    const sortSel   = $('#sort');
+    const onlyTagged= $('#only-tagged');
+    // Filters (mobile)
+    const docFilterM= $('#doc-filter-m');
+    const sortSelM  = $('#sort-m');
+    const onlyTaggedM=$('#only-tagged-m');
+    const applyMobile = $('#apply-mobile-filters');
+
+    let allDocs = [];
+    let allAnns = [];
+    let idx = null; // lunr index
+
+    const toast = (msg, type='primary') => {
+      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
+      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, {autohide:true, delay:1600}).show();
+    };
+
+    const esc = (s='') => (s+'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+
+    function getQuote(a){ return a.quote ?? a.text ?? ''; }
+    function getBody(a){
+      // prefer 'note' if present, else 'text', else empty
+      return a.note ?? (a.kind==='note' ? a.text : '') ?? '';
+    }
+    function getWhen(a){ return a.updatedAt || a.createdAt || null; } // prefer updatedAt for sorting
+    function getTags(a){ return Array.isArray(a.tags) ? a.tags : []; }
+
+    function buildDocSelect(selectEl){
+      if (!selectEl) return;
+      selectEl.innerHTML = `<option value="">All documents</option>` +
+        allDocs
+          .slice()
+          .sort((a,b)=>(a.title||'').localeCompare(b.title||''))
+          .map(d=>`<option value="${d.id}">${esc(d.title||'(Untitled)')}</option>`).join('');
+    }
+
+    function buildIndex(){
+      if (!window.lunr) { idx = null; return; }
+      idx = lunr(function(){
+        this.ref('id');
+        this.field('title');
+        this.field('quote');
+        this.field('body');
+        this.field('tags');
+
+        allAnns.forEach(a=>{
+          const doc = allDocs.find(d=>d.id===a.documentId);
+          this.add({
+            id: a.id,
+            title: (doc?.title)||'',
+            quote: getQuote(a)||'',
+            body:  getBody(a)||'',
+            tags:  getTags(a).join(' ')
+          });
+        });
+      });
+    }
+
+    function filterAndSort(){
+      const term = (q.value||'').trim();
+      const docId = docFilter?.value || '';
+      const sort  = sortSel?.value || 'newest';
+      const tagged= !!(onlyTagged?.checked);
+
+      let set = [...allAnns];
+
+      // doc filter
+      if (docId) set = set.filter(a => a.documentId === docId);
+
+      // tagged-only
+      if (tagged) set = set.filter(a => getTags(a).length > 0);
+
+      // search
+      if (term){
+        if (idx){
+          try{
+            const hits = idx.search(term);
+            const ids = new Set(hits.map(h=>h.ref));
+            set = set.filter(a => ids.has(a.id));
+          }catch{
+            set = set.filter(a =>
+              (getQuote(a).toLowerCase().includes(term.toLowerCase())) ||
+              (getBody(a).toLowerCase().includes(term.toLowerCase())) ||
+              getTags(a).some(t => (t||'').toLowerCase().includes(term.toLowerCase()))
+            );
+          }
+        } else {
+          set = set.filter(a =>
+            (getQuote(a).toLowerCase().includes(term.toLowerCase())) ||
+            (getBody(a).toLowerCase().includes(term.toLowerCase())) ||
+            getTags(a).some(t => (t||'').toLowerCase().includes(term.toLowerCase()))
+          );
+        }
+      }
+
+      // sort
+      set.sort((a,b)=>{
+        const da = new Date(getWhen(a)||0).getTime();
+        const db = new Date(getWhen(b)||0).getTime();
+        return sort === 'oldest' ? (da - db) : (db - da);
+      });
+
+      return set;
+    }
+
+    function renderList(list){
+      if (!list.length){
+        const msg = allAnns.length ? 'No matching notes.' : 'No notes yet.';
+        notesBox.innerHTML = `<div class="text-muted">${msg}</div>`;
+        return;
+      }
+
+      const map = Object.fromEntries(allDocs.map(d => [d.id, d]));
+      const rows = list.map(a=>{
+        const d = map[a.documentId];
+        const title = esc(d?.title || '(Unknown doc)');
+        const when = getWhen(a) ? new Date(getWhen(a)).toLocaleString() : '';
+        const quote = esc(getQuote(a));
+        const body  = esc(getBody(a));
+        const openLink = d ? `reader.html?doc=${encodeURIComponent(d.id)}` : '#';
+
+        const tags = getTags(a).map(t=>`<span class="tag" data-tag="${esc(t)}">${esc(t)}</span>`).join('');
+
+        return `
+          <div class="note-card">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold text-truncate" title="${title}">${title}</div>
+              <div class="note-actions btn-group btn-group-sm">
+                <a class="btn btn-outline-primary" href="${openLink}" title="Open in Reader">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+                <button class="btn btn-outline-secondary" data-copy="${a.id}" title="Copy">
+                  <i class="fa-regular fa-copy"></i>
+                </button>
+              </div>
+            </div>
+            ${when ? `<div class="text-muted small mt-1">${when}</div>` : ``}
+            ${quote ? `<div class="mt-2"><em class="truncate-2">“${quote}”</em></div>` : ``}
+            ${body  ? `<div class="mt-2">${body}</div>` : ``}
+            ${tags  ? `<div class="mt-2">${tags}</div>` : ``}
+          </div>`;
+      }).join('');
+
+      notesBox.innerHTML = rows;
+
+      // Copy handlers (tolerate http dev where clipboard might be restricted)
+      notesBox.querySelectorAll('[data-copy]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-copy');
+          const a = list.find(x=>x.id===id);
+          const txt = [getQuote(a), getBody(a)].filter(Boolean).join('\n\n');
+          try {
+            await navigator.clipboard.writeText(txt);
+            toast('Copied','success');
+          } catch {
+            // fallback prompt
+            window.prompt('Copy to clipboard:', txt);
+          }
+        });
+      });
+
+      // Tag clicks → quick filter
+      notesBox.querySelectorAll('[data-tag]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          const t = el.getAttribute('data-tag') || '';
+          q.value = t;
+          renderList(filterAndSort());
+        });
+      });
+    }
+
+    async function loadAll(){
+      allDocs = await (storage.getDocuments?.() || []);
+      allAnns = await (storage.getAllAnnotations?.() || []);
+
+      // hydrate filters (both desktop + mobile)
+      buildDocSelect(docFilter);
+      buildDocSelect(docFilterM);
+      sortSelM.value = sortSel.value;
+      onlyTaggedM.checked = !!onlyTagged.checked;
+
+      buildIndex();
+      renderList(filterAndSort());
+    }
+
+    // Debounce typing a bit for smoother UX
+    let tId;
+    q.addEventListener('input', ()=>{
+      clearTimeout(tId);
+      tId = setTimeout(()=>renderList(filterAndSort()), 120);
+    });
+
+    // Wire desktop filters
+    clearQ.addEventListener('click', ()=> { q.value=''; renderList(filterAndSort()); });
+    docFilter.addEventListener('change', ()=> renderList(filterAndSort()));
+    sortSel.addEventListener('change',   ()=> renderList(filterAndSort()));
+    onlyTagged.addEventListener('change',()=> renderList(filterAndSort()));
+
+    // Wire mobile → mirror to desktop controls and apply
+    applyMobile.addEventListener('click', ()=>{
+      docFilter.value = docFilterM.value;
+      sortSel.value   = sortSelM.value;
+      onlyTagged.checked = !!onlyTaggedM.checked;
+      renderList(filterAndSort());
+    });
+
+    // Init
+    (async ()=>{
+      try{ await storage.init?.(); }catch{}
+      await loadAll();
+    })();
+  </script>
+
+  <!-- SW registration (safe no-op if already registered) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js', { scope: './' }).catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>

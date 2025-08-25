@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings — JW Study Companion</title>
+
+  <!-- Styles -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+
+  <!-- PWA (use relative paths; works under subpaths too) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#136FF2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- If your icon is project-root/logo.png -->
+  <link rel="apple-touch-icon" href="logo.png">
+
+  <!-- CSP: allow your CDNs + fonts (FA) -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data: blob:;
+          font-src 'self' https://cdnjs.cloudflare.com data:;
+          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+          script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+          connect-src 'self' blob:;
+          worker-src 'self' blob: https://cdnjs.cloudflare.com;
+          object-src 'none';
+          base-uri 'self';
+          upgrade-insecure-requests
+        ">
+
+  <style>
+    body { background: var(--bs-body-bg); }
+    .set-card{
+      border:1px solid var(--bs-border-color);
+      border-radius:12px;
+      background:var(--bs-body-bg);
+    }
+    .schedule-item{
+      border:1px solid var(--bs-border-color);
+      border-radius:.6rem;
+      padding:.6rem .7rem;
+      margin-bottom:.5rem;
+      background:var(--bs-body-bg);
+    }
+    .schedule-item:hover{
+      background: var(--bs-secondary-bg);
+    }
+    .schedule-actions .btn{
+      --bs-btn-padding-y:.15rem; --bs-btn-padding-x:.45rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top bar (back + language + theme) -->
+  <nav class="navbar bg-light border-bottom sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <span class="fw-semibold">Settings</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
+        <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-3">
+    <!-- App settings -->
+    <div class="set-card p-3 mb-3">
+      <h5 class="mb-3"><i class="fa-solid fa-gear me-2"></i>App</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Language</label>
+          <select id="settings-language" class="form-select">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Theme</label>
+          <select id="settings-theme" class="form-select">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="settings-pwa" />
+            <label class="form-check-label" for="settings-pwa">Enable offline mode (PWA)</label>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary" id="btn-save-settings">
+          <i class="fa-solid fa-floppy-disk me-1"></i> Save Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Meeting schedules -->
+    <div class="set-card p-3 mb-3">
+      <h5 class="mb-2"><i class="fa-solid fa-calendar me-2"></i>Meetings</h5>
+      <div class="row g-3">
+        <div class="col-12 col-lg-6">
+          <h6 class="mb-2">Midweek</h6>
+          <div id="midweek-schedule" class="mb-2 small">Loading…</div>
+          <button class="btn btn-sm btn-outline-primary" id="add-midweek">
+            <i class="fa fa-plus me-1"></i>Add
+          </button>
+        </div>
+        <div class="col-12 col-lg-6">
+          <h6 class="mb-2">Weekend</h6>
+          <div id="weekend-schedule" class="mb-2 small">Loading…</div>
+          <button class="btn btn-sm btn-outline-primary" id="add-weekend">
+            <i class="fa fa-plus me-1"></i>Add
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Convention -->
+    <div class="set-card p-3 mb-3">
+      <h5 class="mb-2"><i class="fa-solid fa-people-group me-2"></i>Convention</h5>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="convention-enabled" />
+        <label class="form-check-label" for="convention-enabled">Enable Convention Mode</label>
+      </div>
+      <div id="convention-config" style="display:none;">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Start Date</label>
+            <input type="date" id="convention-start" class="form-control" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">End Date</label>
+            <input type="date" id="convention-end" class="form-control" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="app-toast-body">Saved.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Load app (for global theme/lang wiring) -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Page logic -->
+  <script type="module">
+    import { storage } from './js/storage.js';
+    import { schedule } from './js/schedule.js';
+
+    const $ = (s, r=document) => r.querySelector(s);
+    const toast = (msg, type='primary') => {
+      const el = $('#app-toast'), body = $('#app-toast-body');
+      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, {autohide:true, delay:1600}).show();
+    };
+
+    const langSel = $('#settings-language');
+    const themeSel = $('#settings-theme');
+    const pwaChk  = $('#settings-pwa');
+
+    const midBox  = $('#midweek-schedule');
+    const wkBox   = $('#weekend-schedule');
+
+    const convToggle = $('#convention-enabled');
+    const convWrap   = $('#convention-config');
+    const convStart  = $('#convention-start');
+    const convEnd    = $('#convention-end');
+
+    let initialSettings = null;
+
+    // Normalize schedule data to array
+    function toScheduleArray(data){
+      if (Array.isArray(data)) return data;
+      if (!data || typeof data !== 'object') return [];
+      return data.items || data.times || data.list || data.entries || [];
+    }
+
+    // Render schedule section
+    async function renderSchedule(kind, box){
+      const raw = await (storage.getSchedule?.(kind) || []);
+      const list = toScheduleArray(raw);
+      if (!box) return;
+      if (!list?.length) { box.innerHTML = `<div class="text-muted">No times yet.</div>`; return; }
+
+      box.innerHTML = list.map((it, i)=>`
+        <div class="schedule-item d-flex justify-content-between align-items-center">
+          <div class="me-2">
+            <div class="fw-semibold">${it.title || it.name || 'Meeting'}</div>
+            <div class="text-muted small">${it.day || it.date || '-'} · ${it.time || '-'}</div>
+            ${it.location ? `<div class="text-muted small">${it.location}</div>` : ``}
+          </div>
+          <div class="schedule-actions btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" data-edit="${kind}:${i}" title="Edit"><i class="fa-regular fa-pen-to-square"></i></button>
+            <button class="btn btn-outline-danger" data-del="${kind}:${i}" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+          </div>
+        </div>
+      `).join('');
+
+      // Edit / delete
+      box.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const [k, idx] = btn.getAttribute('data-edit').split(':');
+          if (typeof schedule.editMeetingTime === 'function') {
+            schedule.editMeetingTime(k, Number(idx));
+          } else {
+            // Fallback quick editor
+            const raw = await storage.getSchedule(k) || [];
+            const s = toScheduleArray(raw);
+            const curr = s[Number(idx)] || {};
+            const title = prompt('Title', curr.title || curr.name || '') ?? curr.title;
+            const day   = prompt('Day/Date', curr.day || curr.date || '') ?? (curr.day||curr.date);
+            const time  = prompt('Time', curr.time || '') ?? curr.time;
+            const loc   = prompt('Location (optional)', curr.location || '') ?? curr.location;
+            s[Number(idx)] = { ...curr, title, day, time, location: loc };
+            await storage.saveSchedule(k, s);
+            renderSchedule(k, k==='midweek' ? midBox : wkBox);
+          }
+        });
+      });
+
+      box.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const [k, idx] = btn.getAttribute('data-del').split(':');
+          if (!confirm('Delete this entry?')) return;
+          const raw = await storage.getSchedule(k) || [];
+          const s = toScheduleArray(raw);
+          s.splice(Number(idx), 1);
+          await storage.saveSchedule(k, s);
+          renderSchedule(k, k==='midweek' ? midBox : wkBox);
+        });
+      });
+    }
+
+    async function loadSettingsIntoForm(){
+      const s = await (storage.getSettings?.() || {});
+      initialSettings = s;
+
+      langSel.value  = s.lang || (localStorage.getItem('app_lang') || 'en');
+      themeSel.value = s.theme || (localStorage.getItem('app_theme') || 'light');
+      pwaChk.checked = !!s.pwaEnabled;
+
+      // Convention
+      const ce = !!s.convention?.enabled;
+      convToggle.checked = ce;
+      convWrap.style.display = ce ? 'block' : 'none';
+      if (ce) {
+        convStart.value = s.convention?.startISO || '';
+        convEnd.value   = s.convention?.endISO   || '';
+      }
+    }
+
+    async function toggleServiceWorker(enable){
+      try{
+        if (!('serviceWorker' in navigator)) return;
+        if (enable) {
+          await navigator.serviceWorker.register('sw.js', { scope: './' });
+        } else {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+          // Optional: clear app caches if you use a known prefix
+          if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.filter(k => k.startsWith('study-companion-')).map(k => caches.delete(k)));
+          }
+        }
+      }catch(e){
+        console.warn('SW toggle failed', e);
+      }
+    }
+
+    async function saveSettings(){
+      const curr = await (storage.getSettings?.() || {});
+      const s = {
+        ...curr,
+        lang:  langSel.value || 'en',
+        theme: themeSel.value || 'light',
+        pwaEnabled: !!pwaChk.checked,
+        convention: {
+          ...(curr.convention || {}),
+          enabled: !!convToggle.checked,
+          startISO: convStart.value || '',
+          endISO:   convEnd.value   || ''
+        }
+      };
+      await storage.saveSettings?.(s);
+
+      // Apply theme immediately + persist like app.js
+      document.documentElement.setAttribute('data-bs-theme', s.theme);
+      try { localStorage.setItem('app_theme', s.theme); } catch {}
+      try { localStorage.setItem('app_lang',  s.lang ); } catch {}
+
+      // If PWA flag changed, toggle SW
+      const prev = initialSettings?.pwaEnabled ?? false;
+      if (prev !== s.pwaEnabled) {
+        await toggleServiceWorker(!!s.pwaEnabled);
+      }
+      initialSettings = s;
+
+      toast('Settings saved','success');
+    }
+
+    // Add actions (use schedule.js if present, else prompt fallback)
+    $('#add-midweek')?.addEventListener('click', async ()=>{
+      if (typeof schedule.addMeetingTime === 'function') return schedule.addMeetingTime('midweek');
+      const raw = await storage.getSchedule('midweek') || [];
+      const s = toScheduleArray(raw);
+      const title = prompt('Title','Midweek Meeting') || 'Midweek Meeting';
+      const day   = prompt('Day/Date','Wednesday') || 'Wednesday';
+      const time  = prompt('Time','7:00 PM') || '7:00 PM';
+      const loc   = prompt('Location (optional)','') || '';
+      s.push({ title, day, time, location: loc });
+      await storage.saveSchedule('midweek', s);
+      renderSchedule('midweek', midBox);
+    });
+
+    $('#add-weekend')?.addEventListener('click', async ()=>{
+      if (typeof schedule.addMeetingTime === 'function') return schedule.addMeetingTime('weekend');
+      const raw = await storage.getSchedule('weekend') || [];
+      const s = toScheduleArray(raw);
+      const title = prompt('Title','Weekend Meeting') || 'Weekend Meeting';
+      const day   = prompt('Day/Date','Sunday') || 'Sunday';
+      const time  = prompt('Time','10:00 AM') || '10:00 AM';
+      const loc   = prompt('Location (optional)','') || '';
+      s.push({ title, day, time, location: loc });
+      await storage.saveSchedule('weekend', s);
+      renderSchedule('weekend', wkBox);
+    });
+
+    // Convention toggle live show/hide
+    convToggle?.addEventListener('change', (e)=>{
+      convWrap.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // Theme select live apply
+    themeSel?.addEventListener('change', ()=>{
+      const v = themeSel.value || 'light';
+      document.documentElement.setAttribute('data-bs-theme', v);
+      try { localStorage.setItem('app_theme', v); } catch {}
+    });
+
+    // Save button (also expose to inline call if needed)
+    $('#btn-save-settings')?.addEventListener('click', saveSettings);
+    if (window.app && typeof window.app.saveSettings !== 'function') {
+      window.app.saveSettings = saveSettings;
+    }
+
+    // Init
+    (async ()=>{
+      try { await storage.init?.(); } catch {}
+      try { await schedule.init?.(); } catch {}
+      await loadSettingsIntoForm();
+      await renderSchedule('midweek', midBox);
+      await renderSchedule('weekend', wkBox);
+    })();
+  </script>
+</body>
+</html>

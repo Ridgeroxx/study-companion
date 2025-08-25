@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Study Companion</title>
+
+  <!-- Always go through landing first -->
+  <script>
+    try{
+      if (sessionStorage.getItem('landingHidden') !== '1' &&
+          !/index\.html$/i.test(location.pathname)) {
+        location.replace('index.html');
+      }
+    }catch(e){}
+  </script>
+
+  <!-- App icons / PWA -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="application-name" content="Study Companion">
+  <meta name="theme-color" content="#136FF2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta name="color-scheme" content="light dark">
+
+  <!-- CSP (allows your CDNs + pdf.js worker) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' data: blob:;
+    font-src 'self' https://cdnjs.cloudflare.com data:;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+    connect-src 'self' blob:;
+    worker-src 'self' blob: https://cdnjs.cloudflare.com;
+    object-src 'none';
+    base-uri 'self';
+    upgrade-insecure-requests;
+  ">
+
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Vendor JS (must be before storage.js which app.js imports) -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://unpkg.com/lunr@2.3.9/lunr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- File helpers for reader/import -->
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+  <!-- Activity stub -->
+  <script>window.activity=window.activity||{logDocOpened(){},logDocImported(){},logNote(){},log(){}};</script>
+
+  <style>
+    :root{ --nav-h:56px; --side-w:280px; --right-w:380px;}
+    html,body{height:100%}
+    body{overflow:hidden;background:var(--bs-body-bg)}
+    .shell{display:grid; grid-template-columns:var(--side-w) 1fr var(--right-w); grid-template-rows:var(--nav-h) 1fr; height:100vh}
+    .shell>nav{grid-column:1 / -1}
+    .sidebar{border-right:1px solid #e9ecef; background:var(--bs-body-bg); overflow:auto}
+    .rightbar{border-left:1px solid #e9ecef; background:linear-gradient(180deg, rgba(13,110,253,.04), rgba(13,110,253,.02)); overflow:auto}
+    .center{overflow:auto}
+    .navbar .brand{font-weight:800; letter-spacing:.25px}
+    .hero{border:1px solid #e9ecef; background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.64));
+          backdrop-filter: blur(6px); border-radius:16px; padding:22px; box-shadow:0 6px 28px rgba(13,110,253,.08)}
+    .glass-card{border:1px solid #e9ecef; border-radius:14px; background:rgba(255,255,255,.82); box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    .section-title{font-weight:700; letter-spacing:.2px}
+    .note-item{border:1px solid #e9ecef; border-radius:10px; padding:.75rem; margin-bottom:.5rem; background:#fff}
+    [data-bs-theme="dark"] .glass-card{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14)}
+    [data-bs-theme="dark"] .hero{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.14)}
+    [data-bs-theme="dark"] .text-muted,[data-bs-theme="dark"] .small.text-muted{color:rgba(255,255,255,.72)!important}
+    [data-bs-theme="dark"] .note-item{background:#171717; border-color:rgba(255,255,255,.12)}
+    .ico{width:18px;height:18px}
+
+    /* --- Responsive --- */
+    @media (max-width: 991.98px) {
+      body { overflow:auto; }
+      .shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: var(--nav-h) auto auto;
+        height:auto; min-height:100vh;
+      }
+      .sidebar { display:none; }
+      .rightbar { grid-column:1/-1; border-left:0; border-top:1px solid #e9ecef; }
+      .center { overflow:visible; }
+      .container-fluid { padding-bottom:1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="navbar bg-light border-bottom">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center gap-2">
+          <span class="brand">Study Companion</span>
+          <a class="btn btn-outline-primary btn-sm" href="library.html" title="(Optional page)"><i class="fa-solid fa-books"></i></a>
+          <a class="btn btn-outline-primary btn-sm" href="meetings.html" title="(Optional page)"><i class="fa-solid fa-calendar"></i></a>
+          <a class="btn btn-outline-primary btn-sm" href="convention.html" title="(Optional page)"><i class="fa-solid fa-users"></i></a>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
+          <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
+          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme"><i class="fa-solid fa-moon"></i></button>
+          <!-- made this a link so it always navigates -->
+          <a class="btn btn-sm btn-outline-secondary" id="open-settings" href="settings.html" title="Settings"><i class="fa-solid fa-gear"></i></a>
+        </div>
+      </div>
+    </nav>
+
+    <aside class="sidebar p-2">
+      <div class="small text-muted px-2 pt-2">Search</div>
+      <div class="px-2 pb-2">
+        <div class="input-group input-group-sm">
+          <input id="search-input" type="text" class="form-control" placeholder="Search…">
+          <button class="btn btn-outline-secondary" type="button" id="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+      </div>
+
+      <div class="small text-muted px-2">Favorites</div>
+      <div id="side-favorites" class="small text-muted px-2 pb-2">No favorites yet.</div>
+
+      <div class="small text-muted px-2">Recent</div>
+      <div id="side-recent" class="small text-muted px-2 pb-2">Loading…</div>
+
+      <div class="small text-muted px-2">Pages</div>
+      <div id="side-pages" class="small text-muted px-2">Loading…</div>
+    </aside>
+
+    <main class="center">
+      <div class="container-fluid py-3">
+        <div class="hero mb-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="h5 fw-bold mb-1">Welcome back 👋</div>
+              <div class="small text-muted">Capture notes, import materials, and jump into reading.</div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm" id="btn-new-page"><i class="fa-solid fa-file-circle-plus me-1"></i>New page</button>
+              <button class="btn btn-outline-primary btn-sm" id="btn-import"><i class="fa-solid fa-upload me-1"></i>Import</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="section-title">Quick capture</div>
+            <div class="small text-muted">Save thoughts fast</div>
+          </div>
+          <div class="mt-2">
+            <textarea id="quick-note" class="form-control" rows="3" placeholder="Write a quick note…"></textarea>
+            <div class="d-flex justify-content-end gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-secondary" id="btn-clear-note">Clear</button>
+              <button class="btn btn-sm btn-primary" id="btn-save-note"><i class="fa-solid fa-save me-1"></i>Save</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-xl-7">
+            <div class="glass-card p-3 h-100">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="section-title">Continue reading</div>
+                <button class="btn btn-sm btn-outline-secondary" id="btn-open-library"><i class="fa-solid fa-books"></i> Library</button>
+              </div>
+              <div id="continue-box" class="small text-muted">Loading…</div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-5">
+            <div class="glass-card p-3 h-100">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="section-title">Recent</div>
+                <a class="small" href="#" id="view-all">View all</a>
+              </div>
+              <div id="recent-grid" class="row g-2">Loading…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card p-3 mt-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="section-title">Your library</div>
+            <a class="small" href="#" id="open-lib-mini">Open</a>
+          </div>
+          <div id="library-mini" class="row g-2 mt-1">Loading…</div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="rightbar p-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0"><i class="fa-solid fa-sticky-note me-1"></i> Current Book Notes</h6>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary" id="btn-export"><i class="fa-solid fa-download"></i></button>
+        </div>
+      </div>
+      <div id="current-book-title" class="text-muted small mb-2"></div>
+      <div id="notes-list">
+        <div class="text-center text-muted py-4">
+          <i class="fa-solid fa-sticky-note fa-2x mb-2"></i>
+          <p>No notes yet. Select text in the book to add highlights and notes.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Offcanvas Library -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="libraryDrawer">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="fa-solid fa-books me-2"></i>Your Library</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="library-list"><div class="text-muted">Loading…</div></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="app-toast-body">Action completed.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- App code -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Safe bridges so inline clicks never crash even if app not ready -->
+  <script>
+    (function(){
+      const call=(fn,...a)=>window.app&&typeof window.app[fn]==='function'?window.app[fn](...a):void 0;
+      window.openDoc=(id)=>{call('openDoc',id)};
+      window.importMenu=()=>{call('importMenu')};
+      window.exportStudy=()=>{call('exportStudy')};
+      window.createNewTextPage=()=>{call('createNewTextPage')};
+      window.saveQuickNote=()=>{call('saveQuickNote')};
+      window.openLibrary=()=>{call('openLibraryDrawer')};
+    })();
+  </script>
+
+  <!-- Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try { await navigator.serviceWorker.register('sw.js', { scope: './' }); }
+        catch (e) { console.warn('SW registration failed', e); }
+      });
+    }
+  </script>
+</body>
+</html>

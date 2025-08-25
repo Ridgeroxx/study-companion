@@ -424,3 +424,68 @@
         line-height: 1.4;
     }
 }
+
+
+/* Responsive viewer height */
+#viewer {
+  height: calc(100vh - 180px) !important;
+}
+@media (max-width: 576px) {
+  #viewer { height: calc(100vh - 140px) !important; }
+}
+
+/* PDF viewer styles */
+.pdf-viewer {
+  overflow: auto;
+  background: #f8f9fa;
+  min-height: 60vh;
+}
+#pdf-canvas {
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: white;
+}
+
+/* DOCX viewer styles */
+.docx-viewer .docx-content {
+  background: white;
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: .375rem;
+}
+
+/* Review card */
+.review-wrap { background: linear-gradient(135deg, rgba(13,110,253,.08), rgba(102,16,242,.06)); }
+.review-card { width: min(680px, 92%); aspect-ratio: 16/9; perspective: 1200px; }
+.review-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .45s ease; }
+.review-face {
+  position: absolute; inset: 0; backface-visibility: hidden; border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: radial-gradient(1200px 600px at -10% -10%, rgba(255,255,255,.55), rgba(255,255,255,.25)) , var(--bs-body-bg);
+  box-shadow: 0 18px 38px rgba(0,0,0,.08);
+  font-size: clamp(14px, 2.1vw, 18px);
+}
+.review-back { transform: rotateY(180deg); }
+.review-inner.show-back { transform: rotateY(180deg); }
+.app-ambient {
+  position: fixed; inset: -10vh -10vw; z-index: -1; overflow: hidden; pointer-events: none;
+  filter: blur(40px) saturate(1.15);
+}
+.app-ambient .blob {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(13,110,253,.35), rgba(13,110,253,0));
+  animation: drift 28s ease-in-out infinite;
+  mix-blend-mode: color-dodge;
+}
+.app-ambient .b1 { width: 44vw; height: 44vw; top: 10%; left: -8%; }
+.app-ambient .b2 { width: 36vw; height: 36vw; bottom: -4%; right: -6%;
+  background: radial-gradient(circle at 60% 40%, rgba(102,16,242,.28), rgba(102,16,242,0)); animation-delay: 4s; }
+.app-ambient .b3 { width: 28vw; height: 28vw; top: 40%; right: 20%;
+  background: radial-gradient(circle at 50% 50%, rgba(255,193,7,.25), rgba(255,193,7,0)); animation-delay: 8s; }
+
+@keyframes drift {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  50%     { transform: translate3d(4vw, -3vh, 0) scale(1.08); }
+}
+

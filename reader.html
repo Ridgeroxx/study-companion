@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Reader — Study Companion</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E">
+
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- PWA (relative paths so it works under subpaths too) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#136FF2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- If your icon lives at project root as logo.png -->
+  <link rel="apple-touch-icon" href="logo.png">
+
+  <!-- CSP aligned to your CDNs + pdf.js worker -->
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          img-src 'self' data: blob:;
+          font-src 'self' https://cdnjs.cloudflare.com data:;
+          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+          script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+          connect-src 'self' blob:;
+          worker-src 'self' blob: https://cdnjs.cloudflare.com;
+          object-src 'none';
+          base-uri 'self';
+          upgrade-insecure-requests
+        ">
+
+  <!-- Must be before storage.js usage anywhere -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+
+  <!-- File libs -->
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(window['pdfjsLib']){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";}</script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    html,body{height:100%}
+    body{margin:0; overflow:hidden; background:var(--bs-body-bg)}
+
+    #reader-container{position:fixed; inset:0; display:flex; flex-direction:column; background:var(--bs-body-bg)}
+    .reader-toolbar{display:flex; gap:.5rem; align-items:center; padding:.5rem; border-bottom:1px solid var(--bs-border-color); background:var(--bs-body-bg); z-index:3}
+    #viewer-wrap{position:absolute; inset:48px 0 0 0; overflow:auto}
+
+    .pdf-page{box-shadow:0 2px 10px rgba(0,0,0,.06); background:#fff; margin:0 auto 16px}
+    [data-bs-theme="dark"] .pdf-page{background:#111}
+
+    /* Floating buttons */
+    .back-home{
+      position:fixed; top:8px; left:8px; z-index:2001;
+      backdrop-filter: blur(4px);
+    }
+    .open-drawer{
+      position:fixed; top:8px; right:8px; z-index:2001;
+      backdrop-filter: blur(4px);
+    }
+    @media (max-width:576px){
+      .back-home{ top:6px; left:6px }
+      .open-drawer{ top:6px; right:6px }
+    }
+
+    /* Note viewer (when opening a meeting note inside reader) */
+    .note-view{
+      position:absolute; inset:48px 0 0 0; overflow:auto; padding:16px;
+    }
+    .note-view .card{
+      background:var(--bs-card-bg);
+      border:1px solid var(--bs-border-color);
+    }
+
+    /* Drag & drop import hint */
+    .drop-hint{
+      position:fixed; inset:0; display:none; place-items:center;
+      background:rgba(13,110,253,.06); z-index:2000;
+      border:2px dashed rgba(13,110,253,.35);
+      color:#0d6efd; font-weight:600;
+    }
+    .drop-hint.show{ display:grid; }
+  </style>
+</head>
+<body>
+  <!-- Floating Back/Home -->
+  <a href="app.html" class="back-home btn btn-sm btn-outline-secondary bg-body" title="Back to Home">
+    <i class="fa-solid fa-house"></i> <span class="d-none d-sm-inline">Home</span>
+  </a>
+
+  <!-- Floating Quick Open -->
+  <button class="open-drawer btn btn-sm btn-outline-primary bg-body" data-bs-toggle="offcanvas" data-bs-target="#openDrawer" title="Open…">
+    <i class="fa-solid fa-folder-open"></i> <span class="d-none d-sm-inline">Open</span>
+  </button>
+
+  <!-- Drag & Drop hint -->
+  <div id="drop-hint" class="drop-hint"><div>Drop EPUB / PDF / DOCX / TXT / MD to import</div></div>
+
+  <div id="reader-container">
+    <!-- Toolbar & stage are created by reader.js when a document is opened -->
+  </div>
+
+  <!-- Quick Open Drawer -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="openDrawer">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="fa-solid fa-folder-open me-2"></i>Open</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="input-group input-group-sm mb-3">
+        <input id="quick-search" class="form-control" placeholder="Search titles & notes…">
+        <button class="btn btn-outline-secondary" id="btn-import"><i class="fa-solid fa-upload"></i> Import</button>
+      </div>
+
+      <div class="mb-2 fw-semibold text-muted">Recent</div>
+      <div id="list-recent" class="mb-3 small text-muted">Loading…</div>
+
+      <div class="mb-2 fw-semibold text-muted">All Documents</div>
+      <div id="list-docs" class="mb-3 small text-muted">Loading…</div>
+
+      <div class="mb-2 fw-semibold text-muted">Meeting Notes</div>
+      <div id="list-notes" class="small text-muted">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="app-toast-body">Action completed.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App & page logic -->
+  <script type="module" src="js/app.js"></script>
+  <script type="module">
+    import { reader } from './js/reader.js';
+    import { storage } from './js/storage.js';
+
+    const toast = (msg, type='primary') => {
+      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
+      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, {autohide:true, delay:1800}).show();
+    };
+
+    const $ = (s, r=document)=>r.querySelector(s);
+    const listRecent = $('#list-recent');
+    const listDocs   = $('#list-docs');
+    const listNotes  = $('#list-notes');
+    const qsearch    = $('#quick-search');
+
+    let DOCS=[], NOTES=[];
+
+    function esc(s=''){ return (s+'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c])); }
+
+    function rowDoc(d){
+      return `<div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
+        <div class="me-2">
+          <div class="fw-semibold text-truncate" title="${esc(d.title||'(Untitled)')}">${esc(d.title||'(Untitled)')}</div>
+          <div class="small text-muted">${(d.type||'').toUpperCase()} · ${new Date(d.updatedAt||d.createdAt||Date.now()).toLocaleString()}</div>
+        </div>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary" data-open-doc="${d.id}"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+        </div>
+      </div>`;
+    }
+
+    function rowNote(n){
+      const snippet = (n.content||'').replace(/\s+/g,' ').slice(0,120);
+      return `<div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
+        <div class="me-2">
+          <div class="fw-semibold text-truncate" title="${esc(n.title||'Untitled')}">${esc(n.title||'Untitled')}</div>
+          <div class="small text-muted">${esc(n.type||'-')} · ${new Date(n.updatedAt||n.createdAt||Date.now()).toLocaleString()}</div>
+          <div class="small text-muted text-truncate">${esc(snippet)}</div>
+        </div>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-primary" data-open-note="${n.id}"><i class="fa-solid fa-note-sticky"></i></button>
+        </div>
+      </div>`;
+    }
+
+    function wireOpeners(){
+      document.querySelectorAll('[data-open-doc]').forEach(b=>{
+        b.onclick = async () => {
+          const id = b.getAttribute('data-open-doc');
+          try{
+            await openDocument(id);
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('openDrawer')).hide();
+          }catch(e){ console.error(e); toast('Failed to open document','danger'); }
+        };
+      });
+      document.querySelectorAll('[data-open-note]').forEach(b=>{
+        b.onclick = async () => {
+          const id = b.getAttribute('data-open-note');
+          try{
+            await openMeetingNote(id);
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('openDrawer')).hide();
+          }catch(e){ console.error(e); toast('Failed to open note','danger'); }
+        };
+      });
+    }
+
+    function renderLists(filterTerm=''){
+      const t = (filterTerm||'').toLowerCase();
+
+      const docs = DOCS.filter(d=>{
+        if(!t) return true;
+        return (d.title||'').toLowerCase().includes(t) || (d.type||'').toLowerCase().includes(t);
+      });
+      const recent = [...docs].sort((a,b)=>(new Date(b.lastOpened||b.updatedAt||0))-(new Date(a.lastOpened||a.updatedAt||0))).slice(0,8);
+      const notes = NOTES.filter(n=>{
+        if(!t) return true;
+        return (n.title||'').toLowerCase().includes(t) || (n.content||'').toLowerCase().includes(t) || (n.type||'').toLowerCase().includes(t);
+      });
+
+      listRecent.innerHTML = recent.length ? recent.map(rowDoc).join('') : `<div class="text-muted">Nothing recent.</div>`;
+      listDocs.innerHTML   = docs.length   ? docs.map(rowDoc).join('')   : `<div class="text-muted">Your library is empty.</div>`;
+      listNotes.innerHTML  = notes.length  ? notes.map(rowNote).join('') : `<div class="text-muted">No meeting notes yet.</div>`;
+
+      wireOpeners();
+    }
+
+    async function loadLists(){
+      DOCS = await (storage.getDocuments?.() || []);
+      NOTES = await (storage.getMeetingNotes?.() || []);
+      renderLists();
+    }
+
+    async function openDocument(docId){
+      const cont = document.getElementById('reader-container');
+      cont.innerHTML = ''; // clear any note view
+      await reader.init?.();
+      await reader.openDocument(docId, '#reader-container');
+      // mark recent
+      try {
+        const d = await storage.getDocument?.(docId);
+        if (d) { d.lastOpened = new Date().toISOString(); await storage.saveDocument?.(d); }
+      } catch {}
+    }
+
+    function openMeetingNote(noteId){
+      const n = (NOTES||[]).find(x=>x.id===noteId);
+      if(!n){ throw new Error('Note not found'); }
+      const cont = document.getElementById('reader-container');
+      cont.innerHTML = `
+        <div class="reader-toolbar px-3">
+          <div class="fw-semibold me-2"><i class="fa-regular fa-note-sticky me-1"></i>${esc(n.title||'Untitled')}</div>
+          <span class="badge text-bg-light">${esc(n.type||'-')}</span>
+          <div class="ms-auto">
+            <button class="btn btn-sm btn-outline-primary" data-open-docs><i class="fa-solid fa-book-open me-1"></i>Open document…</button>
+          </div>
+        </div>
+        <div id="note-view" class="note-view">
+          <div class="card shadow-sm">
+            <div class="card-body" id="note-markdown">Loading…</div>
+          </div>
+        </div>`;
+      const el = document.getElementById('note-markdown');
+      if (window.marked) el.innerHTML = window.marked.parse(n.content || '');
+      else el.textContent = n.content || '';
+      document.querySelector('[data-open-docs]')?.addEventListener('click', ()=>{
+        bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('openDrawer')).show();
+      });
+    }
+
+    // Import button (supports any of the supported file types)
+    document.getElementById('btn-import')?.addEventListener('click', async ()=>{
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.epub,.pdf,.docx,.txt,.md';
+      input.onchange = async () => {
+        const f = input.files?.[0];
+        if (!f) return;
+        try{
+          const doc = await storage.importFile?.(f);
+          if (doc?.id) {
+            await openDocument(doc.id);
+            await loadLists();
+            toast('Imported','success');
+          } else {
+            toast('Import failed','danger');
+          }
+        }catch(e){ console.error(e); toast('Import failed','danger'); }
+      };
+      input.click();
+    });
+
+    // Drag & drop import (window-level)
+    (function(){
+      const hint = document.getElementById('drop-hint');
+      const show = ()=>hint.classList.add('show');
+      const hide = ()=>hint.classList.remove('show');
+
+      window.addEventListener('dragover', (e)=>{ e.preventDefault(); show(); });
+      window.addEventListener('dragleave', (e)=>{ if(e.target===document||e.target===document.body) hide(); });
+      window.addEventListener('drop', async (e)=>{
+        e.preventDefault(); hide();
+        const f = e.dataTransfer?.files?.[0];
+        if (!f) return;
+        try{
+          const doc = await storage.importFile?.(f);
+          if (doc?.id){ await openDocument(doc.id); await loadLists(); toast('Imported','success'); }
+          else { toast('Import failed','danger'); }
+        }catch(err){ console.error(err); toast('Import failed','danger'); }
+      });
+    })();
+
+    // Quick search (debounced)
+    let qT;
+    qsearch?.addEventListener('input', ()=>{
+      clearTimeout(qT);
+      qT = setTimeout(()=>renderLists(qsearch.value||''), 120);
+    });
+
+    // Boot: open ?doc=... if present; else show drawer
+    (async ()=>{
+      try{await storage.init?.()}catch{}
+      await loadLists();
+
+      const params=new URLSearchParams(location.search);
+      const docId=params.get('doc');
+      const noteId=params.get('note'); // optional: allow ?note=<id>
+
+      if (docId){
+        await openDocument(docId);
+      } else if (noteId){
+        openMeetingNote(noteId);
+      } else {
+        // nothing specified → present Quick Open
+        bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('openDrawer')).show();
+      }
+    })();
+  </script>
+
+  <!-- Bootstrap JS last -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

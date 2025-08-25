@@ -1,249 +1,99 @@
-// Service Worker for Study Companion PWA
-const CACHE_NAME = 'study-companion-v1.0.0';
-const CACHE_URLS = [
-    '/',
-    '/index.html',
-    '/styles.css',
-    '/js/app.js',
-    '/js/storage.js',
-    '/js/reader.js',
-    '/js/notes.js',
-    '/js/scripture.js',
-    '/js/search.js',
-    '/js/schedule.js',
-    '/js/exporter.js',
-    '/data/books-en.json',
-    '/data/books-es.json',
-    '/manifest.webmanifest',
-    // External CDN resources that we'll cache
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.tailwindcss.com',
-    'https://cdn.jsdelivr.net/npm/epub@0.3.88/lib/epub.min.js',
-    'https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js',
-    'https://unpkg.com/lunr@2.3.9/lunr.min.js',
-    'https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js',
-    'https://cdn.jsdelivr.net/npm/dayjs@1.11.9/dayjs.min.js',
-    'https://cdn.jsdelivr.net/npm/dayjs@1.11.9/plugin/utc.min.js',
-    'https://cdn.jsdelivr.net/npm/dayjs@1.11.9/plugin/timezone.min.js'
+// sw.js — Study Companion PWA (clean + safe clones)
+const VERSION = '1.0.3';
+const CACHE_NAME = `study-companion-${VERSION}`;
+
+// List only files that actually exist at your server root.
+// Add/remove as appropriate for your project.
+const APP_SHELL = [
+  'app.html',
+  'reader.html',
+  'meetings.html',
+  'convention.html',
+  'settings.html',
+  'notes.html',
+  'manifest.webmanifest',
+  'js/app.js',
+  'js/storage.js',
+  'js/reader.js',
+  'js/notes.js',
+  'js/scripture.js',
+  'js/search.js',
+  'js/schedule.js',
+  'js/exporter.js',
+  'logo.png', // since you said your icon is in the root
+  'styles.css',
 ];
 
-// Install event - cache resources
-self.addEventListener('install', event => {
-    console.log('Service Worker: Installing...');
-    
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('Service Worker: Caching files');
-                return cache.addAll(CACHE_URLS);
-            })
-            .then(() => {
-                console.log('Service Worker: Install complete');
-                // Force activation of new service worker
-                return self.skipWaiting();
-            })
-            .catch(error => {
-                console.error('Service Worker: Install failed', error);
-            })
-    );
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try { await cache.addAll(APP_SHELL); } catch (e) { /* Some files may be 404 during dev; okay */ }
+    await self.skipWaiting();
+  })());
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', event => {
-    console.log('Service Worker: Activating...');
-    
-    event.waitUntil(
-        caches.keys()
-            .then(cacheNames => {
-                return Promise.all(
-                    cacheNames.map(cacheName => {
-                        if (cacheName !== CACHE_NAME) {
-                            console.log('Service Worker: Deleting old cache', cacheName);
-                            return caches.delete(cacheName);
-                        }
-                    })
-                );
-            })
-            .then(() => {
-                console.log('Service Worker: Activation complete');
-                // Take control of all pages immediately
-                return self.clients.claim();
-            })
-    );
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
 
-// Fetch event - serve cached content when offline
-self.addEventListener('fetch', event => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') {
-        return;
+// Strategy:
+// - Navigations: network-first, fallback to app.html when offline
+// - Same-origin assets: stale-while-revalidate (serve cache, update in bg)
+// - Cross-origin: try network, fallback to cache if present
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  const sameOrigin = url.origin === location.origin;
+
+  // Navigations
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        // Always try network for HTML first
+        const net = await fetch(req);
+        return net;
+      } catch {
+        const cache = await caches.open(CACHE_NAME);
+        return (await cache.match('app.html')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // Same-origin assets: stale-while-revalidate
+  if (sameOrigin) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+
+      const updatePromise = fetch(req).then(async (net) => {
+        if (net && net.ok) {
+          // Clone ONCE, put the clone in cache, return the original
+          await cache.put(req, net.clone());
+        }
+        return net;
+      }).catch(() => undefined);
+
+      // Return cached immediately if we have it, else wait for network
+      return cached || (await updatePromise) || new Response('Offline', { status: 503 });
+    })());
+    return;
+  }
+
+  // Cross-origin: network first, fallback to cache if available
+  event.respondWith((async () => {
+    try {
+      return await fetch(req);
+    } catch {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      return cached || new Response('Offline', { status: 503 });
     }
-
-    // Skip chrome-extension and other non-http requests
-    if (!event.request.url.startsWith('http')) {
-        return;
-    }
-
-    event.respondWith(
-        caches.match(event.request)
-            .then(cachedResponse => {
-                // Return cached version if available
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                // Otherwise fetch from network
-                return fetch(event.request)
-                    .then(response => {
-                        // Check if response is valid
-                        if (!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
-
-                        // Clone the response for caching
-                        const responseToCache = response.clone();
-
-                        // Cache successful responses for future use
-                        caches.open(CACHE_NAME)
-                            .then(cache => {
-                                // Only cache GET requests to http/https
-                                if (event.request.url.startsWith('http')) {
-                                    cache.put(event.request, responseToCache);
-                                }
-                            });
-
-                        return response;
-                    })
-                    .catch(error => {
-                        console.log('Service Worker: Fetch failed, serving offline page', error);
-                        
-                        // If this is a navigation request, return the main page
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('/index.html');
-                        }
-                        
-                        // For other requests, return a generic offline response
-                        return new Response('Offline - content not available', {
-                            status: 503,
-                            statusText: 'Service Unavailable',
-                            headers: new Headers({
-                                'Content-Type': 'text/plain'
-                            })
-                        });
-                    });
-            })
-    );
+  })());
 });
-
-// Background sync for data synchronization (if needed in future)
-self.addEventListener('sync', event => {
-    console.log('Service Worker: Background sync', event.tag);
-    
-    if (event.tag === 'background-sync') {
-        event.waitUntil(
-            // Handle background sync tasks here
-            Promise.resolve()
-        );
-    }
-});
-
-// Handle push notifications (for future features)
-self.addEventListener('push', event => {
-    console.log('Service Worker: Push received', event);
-    
-    const options = {
-        body: event.data ? event.data.text() : 'New update available',
-        icon: '/icon-192.png',
-        badge: '/icon-72.png',
-        vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
-        },
-        actions: [
-            {
-                action: 'explore',
-                title: 'Open App',
-                icon: '/icon-192.png'
-            },
-            {
-                action: 'close',
-                title: 'Close',
-                icon: '/icon-192.png'
-            }
-        ]
-    };
-    
-    event.waitUntil(
-        self.registration.showNotification('Study Companion', options)
-    );
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', event => {
-    console.log('Service Worker: Notification click', event);
-    
-    event.notification.close();
-    
-    if (event.action === 'explore') {
-        // Open the app
-        event.waitUntil(
-            clients.openWindow('/')
-        );
-    } else if (event.action === 'close') {
-        // Just close the notification
-        return;
-    } else {
-        // Default action - open the app
-        event.waitUntil(
-            clients.openWindow('/')
-        );
-    }
-});
-
-// Message handling for communication with main app
-self.addEventListener('message', event => {
-    console.log('Service Worker: Message received', event.data);
-    
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
-    
-    if (event.data && event.data.type === 'CACHE_UPDATE') {
-        // Force cache update
-        event.waitUntil(
-            caches.open(CACHE_NAME)
-                .then(cache => {
-                    return cache.addAll(CACHE_URLS);
-                })
-        );
-    }
-    
-    if (event.data && event.data.type === 'GET_VERSION') {
-        // Send version info back to client
-        event.ports[0].postMessage({
-            type: 'VERSION_INFO',
-            version: CACHE_NAME,
-            cached: CACHE_URLS.length
-        });
-    }
-});
-
-// Handle errors
-self.addEventListener('error', event => {
-    console.error('Service Worker: Error', event.error);
-});
-
-self.addEventListener('unhandledrejection', event => {
-    console.error('Service Worker: Unhandled rejection', event.reason);
-});
-
-// Utility function to check if device is online
-function isOnline() {
-    return navigator.onLine;
-}
-
-// Log service worker status
-console.log('Service Worker: Script loaded');

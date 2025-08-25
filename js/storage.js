@@ -1,504 +1,195 @@
-// Storage module using localForage for IndexedDB abstraction
-class Storage {
-    constructor() {
-        this.dbName = 'StudyCompanionDB';
-        this.version = 1;
-        this.initialized = false;
-    }
+// /js/storage.js
+// Lightweight localforage-backed storage layer (ES module)
 
-    async init() {
-        if (this.initialized) return;
-        
-        try {
-            // Configure localForage
-            localforage.config({
-                driver: localforage.INDEXEDDB,
-                name: this.dbName,
-                version: this.version,
-                storeName: 'study_companion',
-                description: 'Study Companion local database'
-            });
-            
-            // Test connection
-            await localforage.ready();
-            
-            // Run migrations if needed
-            await this.runMigrations();
-            
-            this.initialized = true;
-            console.log('Storage initialized successfully');
-            
-        } catch (error) {
-            console.error('Failed to initialize storage:', error);
-            throw new Error('Storage initialization failed');
-        }
-    }
-
-    async runMigrations() {
-        try {
-            const currentVersion = await this.getItem('_schema_version') || 0;
-            
-            if (currentVersion < this.version) {
-                console.log(`Running migrations from version ${currentVersion} to ${this.version}`);
-                
-                // Migration logic would go here
-                // For now, just update version
-                await this.setItem('_schema_version', this.version);
-            }
-        } catch (error) {
-            console.error('Migration failed:', error);
-        }
-    }
-
-    // Basic key-value operations
-    async getItem(key) {
-        try {
-            return await localforage.getItem(key);
-        } catch (error) {
-            console.error(`Failed to get item ${key}:`, error);
-            return null;
-        }
-    }
-
-    async setItem(key, value) {
-        try {
-            await localforage.setItem(key, value);
-            return true;
-        } catch (error) {
-            console.error(`Failed to set item ${key}:`, error);
-            return false;
-        }
-    }
-
-    async removeItem(key) {
-        try {
-            await localforage.removeItem(key);
-            return true;
-        } catch (error) {
-            console.error(`Failed to remove item ${key}:`, error);
-            return false;
-        }
-    }
-
-    async clear() {
-        try {
-            await localforage.clear();
-            return true;
-        } catch (error) {
-            console.error('Failed to clear storage:', error);
-            return false;
-        }
-    }
-
-    async keys() {
-        try {
-            return await localforage.keys();
-        } catch (error) {
-            console.error('Failed to get keys:', error);
-            return [];
-        }
-    }
-
-    // Settings operations
-    async getSettings() {
-        const settings = await this.getItem('settings') || {};
-        
-        // Ensure default structure
-        return {
-            id: 'settings',
-            lang: 'en',
-            theme: 'light',
-            pwaEnabled: false,
-            setupComplete: false,
-            meetingSchedule: {
-                midweek: [],
-                weekend: []
-            },
-            convention: {
-                enabled: false,
-                startISO: '',
-                endISO: '',
-                sessions: []
-            },
-            ...settings
-        };
-    }
-
-    async saveSettings(settings) {
-        settings.updatedAt = new Date().toISOString();
-        return await this.setItem('settings', settings);
-    }
-
-    // Document operations
-    async getDocuments() {
-        const documents = await this.getItem('documents') || [];
-        return documents;
-    }
-
-    async saveDocument(document) {
-        const documents = await this.getDocuments();
-        
-        if (!document.id) {
-            document.id = this.generateId('doc');
-        }
-        
-        document.updatedAt = new Date().toISOString();
-        
-        const existingIndex = documents.findIndex(d => d.id === document.id);
-        if (existingIndex >= 0) {
-            documents[existingIndex] = document;
-        } else {
-            document.createdAt = document.updatedAt;
-            documents.push(document);
-        }
-        
-        return await this.setItem('documents', documents);
-    }
-
-    async deleteDocument(documentId) {
-        const documents = await this.getDocuments();
-        const filteredDocs = documents.filter(d => d.id !== documentId);
-        await this.setItem('documents', filteredDocs);
-        
-        // Also delete related data
-        await this.deleteAnnotations(documentId);
-        await this.removeBibleIndex(documentId);
-        
-        return true;
-    }
-
-    async getDocument(documentId) {
-        const documents = await this.getDocuments();
-        return documents.find(d => d.id === documentId);
-    }
-
-    // Annotation operations
-    async getAnnotations(documentId) {
-        const key = `annotations_${documentId}`;
-        return await this.getItem(key) || [];
-    }
-
-    async saveAnnotation(documentId, annotation) {
-        const annotations = await this.getAnnotations(documentId);
-        
-        if (!annotation.id) {
-            annotation.id = this.generateId('ann');
-        }
-        
-        annotation.documentId = documentId;
-        annotation.updatedAt = new Date().toISOString();
-        
-        const existingIndex = annotations.findIndex(a => a.id === annotation.id);
-        if (existingIndex >= 0) {
-            annotations[existingIndex] = annotation;
-        } else {
-            annotation.createdAt = annotation.updatedAt;
-            annotations.push(annotation);
-        }
-        
-        const key = `annotations_${documentId}`;
-        return await this.setItem(key, annotations);
-    }
-
-    async deleteAnnotation(documentId, annotationId) {
-        const annotations = await this.getAnnotations(documentId);
-        const filteredAnnotations = annotations.filter(a => a.id !== annotationId);
-        
-        const key = `annotations_${documentId}`;
-        return await this.setItem(key, filteredAnnotations);
-    }
-
-    async deleteAnnotations(documentId) {
-        const key = `annotations_${documentId}`;
-        return await this.removeItem(key);
-    }
-
-    async getAllAnnotations() {
-        const keys = await this.keys();
-        const annotationKeys = keys.filter(key => key.startsWith('annotations_'));
-        
-        const allAnnotations = [];
-        for (const key of annotationKeys) {
-            const annotations = await this.getItem(key) || [];
-            allAnnotations.push(...annotations);
-        }
-        
-        return allAnnotations;
-    }
-
-    // Meeting notes operations
-    async getMeetingNotes() {
-        return await this.getItem('meetingNotes') || [];
-    }
-
-    async saveMeetingNote(note) {
-        const notes = await this.getMeetingNotes();
-        
-        if (!note.id) {
-            note.id = this.generateId('note');
-        }
-        
-        note.updatedAt = new Date().toISOString();
-        
-        const existingIndex = notes.findIndex(n => n.id === note.id);
-        if (existingIndex >= 0) {
-            notes[existingIndex] = note;
-        } else {
-            note.createdAt = note.updatedAt;
-            notes.push(note);
-        }
-        
-        return await this.setItem('meetingNotes', notes);
-    }
-
-    async deleteMeetingNote(noteId) {
-        const notes = await this.getMeetingNotes();
-        const filteredNotes = notes.filter(n => n.id !== noteId);
-        return await this.setItem('meetingNotes', filteredNotes);
-    }
-
-    async getMeetingNote(noteId) {
-        const notes = await this.getMeetingNotes();
-        return notes.find(n => n.id === noteId);
-    }
-
-    // Bible index operations
-    async getBibleIndex() {
-        return await this.getItem('bibleIndex') || null;
-    }
-
-    async saveBibleIndex(index) {
-        index.updatedAt = new Date().toISOString();
-        return await this.setItem('bibleIndex', index);
-    }
-
-    async removeBibleIndex(documentId) {
-        const index = await this.getBibleIndex();
-        if (index && index.documentId === documentId) {
-            return await this.removeItem('bibleIndex');
-        }
-        return true;
-    }
-
-    // Search index operations
-    async getSearchIndex() {
-        return await this.getItem('searchIndex') || null;
-    }
-
-    async saveSearchIndex(index) {
-        index.builtAt = new Date().toISOString();
-        return await this.setItem('searchIndex', index);
-    }
-
-    async clearSearchIndex() {
-        return await this.removeItem('searchIndex');
-    }
-
-    // File operations (for storing EPUB contents)
-    async saveFile(fileKey, arrayBuffer) {
-        const key = `file_${fileKey}`;
-        return await this.setItem(key, arrayBuffer);
-    }
-
-    async getFile(fileKey) {
-        const key = `file_${fileKey}`;
-        return await this.getItem(key);
-    }
-
-    async deleteFile(fileKey) {
-        const key = `file_${fileKey}`;
-        return await this.removeItem(key);
-    }
-
-    // Utility methods
-    generateId(prefix = 'item') {
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substr(2, 9);
-        return `${prefix}_${timestamp}_${random}`;
-    }
-
-    async getDataStats() {
-        try {
-            const keys = await this.keys();
-            const stats = {
-                totalKeys: keys.length,
-                documents: 0,
-                annotations: 0,
-                meetingNotes: 0,
-                files: 0,
-                other: 0
-            };
-            
-            // Count items by type
-            for (const key of keys) {
-                if (key === 'documents') {
-                    const docs = await this.getItem(key) || [];
-                    stats.documents = docs.length;
-                } else if (key.startsWith('annotations_')) {
-                    const annotations = await this.getItem(key) || [];
-                    stats.annotations += annotations.length;
-                } else if (key === 'meetingNotes') {
-                    const notes = await this.getItem(key) || [];
-                    stats.meetingNotes = notes.length;
-                } else if (key.startsWith('file_')) {
-                    stats.files++;
-                } else {
-                    stats.other++;
-                }
-            }
-            
-            return stats;
-        } catch (error) {
-            console.error('Failed to get data stats:', error);
-            return null;
-        }
-    }
-
-    async exportData() {
-        try {
-            const data = {
-                version: this.version,
-                exportedAt: new Date().toISOString(),
-                settings: await this.getSettings(),
-                documents: await this.getDocuments(),
-                annotations: await this.getAllAnnotations(),
-                meetingNotes: await this.getMeetingNotes(),
-                bibleIndex: await this.getBibleIndex()
-            };
-            
-            return data;
-        } catch (error) {
-            console.error('Failed to export data:', error);
-            throw error;
-        }
-    }
-
-    async importData(data, mergeStrategy = 'last-writer-wins') {
-        try {
-            console.log('Importing data with strategy:', mergeStrategy);
-            
-            // Validate data structure
-            if (!data.version || !data.exportedAt) {
-                throw new Error('Invalid data format');
-            }
-            
-            // Import settings (always overwrite)
-            if (data.settings) {
-                await this.saveSettings(data.settings);
-            }
-            
-            // Import documents
-            if (data.documents && Array.isArray(data.documents)) {
-                const currentDocs = await this.getDocuments();
-                const mergedDocs = this.mergeArrays(currentDocs, data.documents, mergeStrategy);
-                await this.setItem('documents', mergedDocs);
-            }
-            
-            // Import annotations
-            if (data.annotations && Array.isArray(data.annotations)) {
-                // Group by document ID
-                const annotationsByDoc = data.annotations.reduce((acc, ann) => {
-                    if (!acc[ann.documentId]) acc[ann.documentId] = [];
-                    acc[ann.documentId].push(ann);
-                    return acc;
-                }, {});
-                
-                for (const [docId, annotations] of Object.entries(annotationsByDoc)) {
-                    const currentAnnotations = await this.getAnnotations(docId);
-                    const mergedAnnotations = this.mergeArrays(currentAnnotations, annotations, mergeStrategy);
-                    await this.setItem(`annotations_${docId}`, mergedAnnotations);
-                }
-            }
-            
-            // Import meeting notes
-            if (data.meetingNotes && Array.isArray(data.meetingNotes)) {
-                const currentNotes = await this.getMeetingNotes();
-                const mergedNotes = this.mergeArrays(currentNotes, data.meetingNotes, mergeStrategy);
-                await this.setItem('meetingNotes', mergedNotes);
-            }
-            
-            // Import Bible index (if newer)
-            if (data.bibleIndex) {
-                const currentIndex = await this.getBibleIndex();
-                if (!currentIndex || (data.bibleIndex.updatedAt > currentIndex.updatedAt)) {
-                    await this.saveBibleIndex(data.bibleIndex);
-                }
-            }
-            
-            // Clear search index to force rebuild
-            await this.clearSearchIndex();
-            
-            console.log('Data import completed successfully');
-            return true;
-            
-        } catch (error) {
-            console.error('Failed to import data:', error);
-            throw error;
-        }
-    }
-
-    mergeArrays(currentArray, newArray, strategy) {
-        if (strategy === 'last-writer-wins') {
-            const merged = [...currentArray];
-            
-            for (const newItem of newArray) {
-                const existingIndex = merged.findIndex(item => item.id === newItem.id);
-                
-                if (existingIndex >= 0) {
-                    // Compare timestamps
-                    const existing = merged[existingIndex];
-                    const existingTime = new Date(existing.updatedAt || existing.createdAt || 0);
-                    const newTime = new Date(newItem.updatedAt || newItem.createdAt || 0);
-                    
-                    if (newTime > existingTime) {
-                        merged[existingIndex] = newItem;
-                    }
-                } else {
-                    merged.push(newItem);
-                }
-            }
-            
-            return merged;
-        }
-        
-        // Default: append new items
-        return [...currentArray, ...newArray];
-    }
-
-    async clearAllData() {
-        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-            try {
-                await this.clear();
-                console.log('All data cleared');
-                return true;
-            } catch (error) {
-                console.error('Failed to clear data:', error);
-                return false;
-            }
-        }
-        return false;
-    }
-
-    async showDataStats() {
-        const stats = await this.getDataStats();
-        if (stats) {
-            const message = `
-Data Statistics:
-- Total items: ${stats.totalKeys}
-- Documents: ${stats.documents}
-- Annotations: ${stats.annotations}
-- Meeting notes: ${stats.meetingNotes}
-- Files: ${stats.files}
-- Other: ${stats.other}
-            `.trim();
-            
-            alert(message);
-        }
-    }
+if (!window.localforage) {
+  console.error('localforage missing — include it before storage.js');
 }
 
-// Create and export storage instance
-const storage = new Storage();
-window.storage = storage; // For debugging
+const LF = window.localforage?.createInstance({ name: 'study-companion' });
+
+const KEYS = {
+  DOCS: 'docs',
+  FAVS: 'favorites',
+  SETTINGS: 'settings',
+  PAGES: 'pages',
+  SEARCH: 'search-index',
+  MEETING_NOTES: 'meeting-notes',
+  SCHEDULE_MIDWEEK: 'schedule:midweek',
+  SCHEDULE_WEEKEND: 'schedule:weekend',
+  BOOKMARKS: (docId) => `bm:${docId}`,
+  ANN:  (docId) => `ann:${docId}`,
+  FILE: (key)   => `file:${key}`,
+};
+
+const nowISO = () => new Date().toISOString();
+function generateId(prefix='item'){
+  const r = crypto.randomUUID?.() || Math.random().toString(36).slice(2,10);
+  return `${prefix}_${r}`;
+}
+async function _get(k, fb){ try{ const v = await LF.getItem(k); return v ?? fb; }catch{return fb} }
+async function _set(k, v){ return LF.setItem(k, v) }
+async function _rm(k){ try{ await LF.removeItem(k) }catch{} }
+
+/* ---------------- Documents ---------------- */
+async function getDocuments(){ return await _get(KEYS.DOCS, []) }
+async function getActiveDocuments(){ return (await getDocuments()).filter(d=>!d.deletedAt) }
+async function getDocument(id){ return (await getDocuments()).find(d=>d.id===id) || null }
+async function saveDocument(doc){
+  const list = await getDocuments();
+  const idx = list.findIndex(d=>d.id===doc.id);
+  const next = { ...doc, createdAt:doc.createdAt || nowISO(), updatedAt: nowISO() };
+  if (idx>=0) list[idx] = next; else list.push(next);
+  await _set(KEYS.DOCS, list);
+  return next;
+}
+async function softDeleteDocument(id){
+  const list = await getDocuments(); const i=list.findIndex(d=>d.id===id);
+  if (i>=0){ list[i].deletedAt=nowISO(); await _set(KEYS.DOCS, list); }
+}
+async function hardDeleteDocument(id){
+  const list = await getDocuments();
+  const doc = list.find(d=>d.id===id);
+  await _set(KEYS.DOCS, list.filter(d=>d.id!==id));
+  if (doc?.fileKey) await _rm(KEYS.FILE(doc.fileKey));
+  await _rm(KEYS.ANN(id)); await _rm(KEYS.BOOKMARKS(id));
+}
+async function getRecentDocuments(n=12){
+  const all = await getActiveDocuments();
+  return all.sort((a,b)=>new Date(b.lastOpened||b.updatedAt||0)-new Date(a.lastOpened||a.updatedAt||0)).slice(0,n);
+}
+
+/* ---------------- Files ---------------- */
+async function saveFile(fileKey, arrayBuffer){ return _set(KEYS.FILE(fileKey), arrayBuffer) }
+async function getFile(fileKey){ return _get(KEYS.FILE(fileKey), null) }
+async function getDocumentArrayBuffer(docId){
+  const doc = await getDocument(docId);
+  if (!doc) return null;
+  if (doc.fileKey) return await getFile(doc.fileKey);
+  return null;
+}
+
+/* ---------------- Import file (EPUB/PDF/DOCX/TXT/MD) ---------------- */
+function _ext(name){ const m = /\.[^\.]+$/.exec(name||''); return (m? m[0].slice(1) : '').toLowerCase(); }
+function _typeFromExt(ext){
+  if(ext==='epub')return 'epub';
+  if(ext==='pdf')return 'pdf';
+  if(ext==='docx')return 'docx';
+  if(ext==='md'||ext==='markdown')return 'md';
+  return 'txt';
+}
+async function importFile(file){
+  const id = generateId('doc');
+  const ext = _ext(file.name);
+  const type = _typeFromExt(ext);
+  const fileKey = `orig:${id}`;
+  const buf = await file.arrayBuffer();
+  await LF.setItem(KEYS.FILE(fileKey), buf);
+  const doc = await saveDocument({
+    id, title: file.name.replace(/\.[^\.]+$/,'') || 'Untitled',
+    type, fileKey, createdAt: nowISO(), updatedAt: nowISO()
+  });
+  try{ await window.activity?.logDocImported?.(doc) }catch{}
+  return doc;
+}
+
+/* ---------------- Annotations ---------------- */
+async function getAnnotations(docId){ return await _get(KEYS.ANN(docId), []) }
+async function saveAnnotations(docId, list){ return _set(KEYS.ANN(docId), Array.isArray(list)? list : []) }
+async function getAllAnnotations(){
+  const docs = await getDocuments(); const out=[];
+  for (const d of docs){ const arr = await getAnnotations(d.id); arr.forEach(a=>out.push(a)) }
+  return out;
+}
+
+/* ---------------- Bookmarks ---------------- */
+async function getBookmarks(docId){ return await _get(KEYS.BOOKMARKS(docId), []) }
+async function saveBookmarks(docId, list){ return _set(KEYS.BOOKMARKS(docId), Array.isArray(list)?list:[]) }
+
+/* ---------------- Favorites ---------------- */
+async function getFavorites(){ return await _get(KEYS.FAVS, []) }
+async function toggleFavorite(docId){
+  const list = await getFavorites(); const i=list.indexOf(docId);
+  if(i>=0) list.splice(i,1); else list.push(docId);
+  await _set(KEYS.FAVS, list); return list;
+}
+
+/* ---------------- Settings ---------------- */
+async function getSettings(){ return await _get(KEYS.SETTINGS, {}) }
+async function saveSettings(s){ return _set(KEYS.SETTINGS, s || {}) }
+
+/* ---------------- Pages ---------------- */
+async function getPages(){ return await _get(KEYS.PAGES, []) }
+async function createPage({ title='Untitled', content='' }={}){
+  const pages = await getPages();
+  const p = { id: generateId('page'), title, content, createdAt: nowISO(), updatedAt: nowISO() };
+  pages.push(p); await _set(KEYS.PAGES, pages); return p;
+}
+async function updatePage(id, patch){
+  const pages = await getPages(); const i = pages.findIndex(p=>p.id===id);
+  if(i<0) return; pages[i] = { ...pages[i], ...patch, updatedAt: nowISO() };
+  await _set(KEYS.PAGES, pages);
+}
+async function deletePage(id){ const pages=await getPages(); await _set(KEYS.PAGES, pages.filter(p=>p.id!==id)) }
+
+/* ---------------- Search cache ---------------- */
+async function getSearchIndex(){ return await _get(KEYS.SEARCH, null) }
+async function saveSearchIndex(v){ return _set(KEYS.SEARCH, v) }
+async function clearSearchIndex(){ return _rm(KEYS.SEARCH) }
+
+/* ---------------- Meeting Notes (NEW) ---------------- */
+async function getMeetingNotes(){ return await _get(KEYS.MEETING_NOTES, []) }
+async function saveMeetingNote(note){
+  const list = await getMeetingNotes();
+  if (!note.id) note.id = generateId('meet');
+  const idx = list.findIndex(n => n.id === note.id);
+  const next = { ...note, updatedAt: nowISO(), createdAt: note.createdAt || nowISO() };
+  if (idx >= 0) list[idx] = next; else list.push(next);
+  await _set(KEYS.MEETING_NOTES, list);
+  return next;
+}
+async function deleteMeetingNote(id){
+  const list = await getMeetingNotes();
+  await _set(KEYS.MEETING_NOTES, list.filter(n => n.id !== id));
+}
+
+/* ---------------- Schedule (NEW, used by schedule.js) ---------------- */
+async function getSchedule(kind){ // 'midweek' | 'weekend'
+  const key = kind === 'weekend' ? KEYS.SCHEDULE_WEEKEND : KEYS.SCHEDULE_MIDWEEK;
+  return await _get(key, []);
+}
+async function saveSchedule(kind, list){
+  const key = kind === 'weekend' ? KEYS.SCHEDULE_WEEKEND : KEYS.SCHEDULE_MIDWEEK;
+  return _set(key, Array.isArray(list) ? list : []);
+}
+
+/* ---------------- Misc ---------------- */
+async function getDocumentBody(docId){
+  const ab = await getDocumentArrayBuffer(docId);
+  if (ab && ab.byteLength) return new TextDecoder().decode(ab);
+  return '';
+}
+async function setItem(k,v){ return _set(k,v) }
+async function getItem(k){ return _get(k,null) }
+async function init(){ /* no-op; LF ready */ }
+
+const storage = {
+  init, generateId,
+  getDocuments, getActiveDocuments, getDocument, saveDocument, softDeleteDocument, hardDeleteDocument, getRecentDocuments,
+  saveFile, getFile, getDocumentArrayBuffer, importFile,
+  getAnnotations, saveAnnotations, getAllAnnotations,
+  getBookmarks, saveBookmarks,
+  getFavorites, toggleFavorite,
+  getSettings, saveSettings,
+  getPages, createPage, updatePage, deletePage,
+  getSearchIndex, saveSearchIndex, clearSearchIndex,
+  // NEW:
+  getMeetingNotes, saveMeetingNote, deleteMeetingNote,
+  getSchedule, saveSchedule,
+  getDocumentBody,
+  setItem, getItem
+};
 
 export { storage };
+
+// Expose globally for inline handlers safety (optional)
+window.storage = storage;
