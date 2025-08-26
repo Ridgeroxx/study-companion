@@ -1,99 +1,47 @@
-// sw.js — Study Companion PWA (clean + safe clones)
-const VERSION = '1.0.3';
-const CACHE_NAME = `study-companion-${VERSION}`;
+// sw.js
+const CACHE = 'sc-v1';
 
-// List only files that actually exist at your server root.
-// Add/remove as appropriate for your project.
-const APP_SHELL = [
-  'app.html',
-  'reader.html',
-  'meetings.html',
-  'convention.html',
-  'settings.html',
-  'notes.html',
-  'manifest.webmanifest',
-  'js/app.js',
-  'js/storage.js',
-  'js/reader.js',
-  'js/notes.js',
-  'js/scripture.js',
-  'js/search.js',
-  'js/schedule.js',
-  'js/exporter.js',
-  'logo.png', // since you said your icon is in the root
-  'styles.css',
+// ONLY include same-origin files that actually exist in your project
+const PRECACHE = [
+  '/', 'index.html', 'app.html', 'reader.html', 'meetings.html', 'settings.html',
+  'styles/base.css', 'styles/dark.css',
+  'js/app.js', 'js/storage.js', 'js/reader.js', 'js/notes.js', 'js/schedule.js', 'js/flags.js',
+  // add any other local files that really exist
+  'icons/icon-192.png', 'icons/icon-512.png'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    try { await cache.addAll(APP_SHELL); } catch (e) { /* Some files may be 404 during dev; okay */ }
-    await self.skipWaiting();
-  })());
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-    await self.clients.claim();
-  })());
-});
-
-// Strategy:
-// - Navigations: network-first, fallback to app.html when offline
-// - Same-origin assets: stale-while-revalidate (serve cache, update in bg)
-// - Cross-origin: try network, fallback to cache if present
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
-
-  const url = new URL(req.url);
-  const sameOrigin = url.origin === location.origin;
-
-  // Navigations
-  if (req.mode === 'navigate') {
-    event.respondWith((async () => {
+self.addEventListener('install', (e) => {
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    for (const url of PRECACHE) {
       try {
-        // Always try network for HTML first
-        const net = await fetch(req);
-        return net;
-      } catch {
-        const cache = await caches.open(CACHE_NAME);
-        return (await cache.match('app.html')) || Response.error();
+        const req = new Request(url, { cache: 'reload' });
+        const res = await fetch(req);
+        if (res.ok) await cache.put(req, res);
+      } catch (err) {
+        // skip missing or blocked item; keep installing
+        // console.warn('[SW] skip precache', url, err);
       }
-    })());
-    return;
-  }
-
-  // Same-origin assets: stale-while-revalidate
-  if (sameOrigin) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(req);
-
-      const updatePromise = fetch(req).then(async (net) => {
-        if (net && net.ok) {
-          // Clone ONCE, put the clone in cache, return the original
-          await cache.put(req, net.clone());
-        }
-        return net;
-      }).catch(() => undefined);
-
-      // Return cached immediately if we have it, else wait for network
-      return cached || (await updatePromise) || new Response('Offline', { status: 503 });
-    })());
-    return;
-  }
-
-  // Cross-origin: network first, fallback to cache if available
-  event.respondWith((async () => {
-    try {
-      return await fetch(req);
-    } catch {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(req);
-      return cached || new Response('Offline', { status: 503 });
     }
+    self.skipWaiting();
   })());
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+  // Only cache-first for our own origin; let CDNs go to network
+  if (url.origin === location.origin) {
+    e.respondWith((async () => {
+      const match = await caches.match(e.request);
+      return match || fetch(e.request);
+    })());
+  }
 });

@@ -12,120 +12,82 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
+  <!-- UI polish / dark tweaks -->
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/dark.css">
+
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#136FF2">
   <meta name="mobile-web-app-capable" content="yes">
-  <!-- iOS PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <!-- If your icon is at project root: -->
-  <link rel="apple-touch-icon" href="logo.png">
+  <!-- Make sure this file exists: /icons/icon-192.png -->
+  <link rel="apple-touch-icon" href="icons/logo.png">
 
-  <!-- CSP that matches actual CDNs used -->
+  <!-- CSP: allow CDNs for CSS/fonts so icons actually load -->
   <meta http-equiv="Content-Security-Policy"
-        content="
-          default-src 'self';
-          img-src 'self' data: blob:;
-          font-src 'self' https://cdnjs.cloudflare.com data:;
-          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-          script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
-          connect-src 'self' blob:;
-          worker-src 'self' blob:;
-          object-src 'none';
-          base-uri 'self';
-          upgrade-insecure-requests
-        ">
+  content="
+    default-src 'self';
+    img-src 'self' data: blob:;
+    font-src 'self' data: https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+    connect-src 'self' blob:;
+    worker-src 'self' blob: https://cdnjs.cloudflare.com;
+    object-src 'none';
+    base-uri 'self';
+    upgrade-insecure-requests;
+  ">
 
-  <!-- Must be before modules -->
-  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <!-- Vendor core -->
+<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window['pdfjsLib']) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- Optional libs -->
-  <script src="https://unpkg.com/lunr@2.3.9/lunr.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.9/dayjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- Activity stub -->
-  <script src="js/shared-activity.js"></script>
+  <script>window.activity=window.activity||{logDocOpened(){},logDocImported(){},logNote(){},log(){}};</script>
 
   <style>
     :root{ --nav-h:56px; --side-w:280px; --right-w:380px; }
     html, body { height:100% }
     body { overflow:hidden; background: var(--bs-body-bg); }
-
-    .shell{
-      display:grid;
-      grid-template-columns: var(--side-w) 1fr var(--right-w);
-      grid-template-rows: var(--nav-h) 1fr;
-      height:100vh;
-    }
+    .shell{ display:grid; grid-template-columns: var(--side-w) 1fr var(--right-w); grid-template-rows: var(--nav-h) 1fr; height:100vh; }
     .shell > nav{ grid-column:1 / -1; }
     .sidebar{ border-right:1px solid #e9ecef; background: var(--bs-body-bg); overflow:auto; }
     .center{ overflow:auto; }
     .rightbar{ border-left:1px solid #e9ecef; background: linear-gradient(180deg, rgba(13,110,253,.04), rgba(13,110,253,.02)); overflow:auto; }
-
     .side-title{ font-size:.75rem; letter-spacing:.4px; text-transform:uppercase; color:#6c757d; padding:.5rem .75rem; }
     .side-list .row-item{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.45rem .75rem; border-radius:8px; }
     .side-list .row-item:hover{ background: rgba(0,0,0,.03); }
-
-    .hero{
-      border:1px solid #e9ecef;
-      background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.62));
-      backdrop-filter: blur(6px);
-      border-radius:16px;
-      padding:22px;
-      box-shadow: 0 6px 28px rgba(13,110,253,.08);
-    }
-
+    .hero{ border:1px solid #e9ecef; background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.62)); backdrop-filter: blur(6px); border-radius:16px; padding:22px; box-shadow: 0 6px 28px rgba(13,110,253,.08); }
     .section-title{ font-weight:700; letter-spacing:.2px; }
     .note-item{ border:1px solid #e9ecef; border-radius:10px; padding:.75rem; margin-bottom:.5rem; background:#fff; }
+    [data-bs-theme="dark"] .note-item{ background:#161616; border-color: rgba(255,255,255,.14); }
+    .sf-item{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem; border-radius:8px;}
+    .sf-item:hover{ background: rgba(0,0,0,.03); }
 
-    /* Dark mode polish for readability */
-    [data-bs-theme="dark"] .hero{
-      background: rgba(255,255,255,.07);
-      border-color: rgba(255,255,255,.14);
-      box-shadow: 0 6px 28px rgba(0,0,0,.5);
-    }
-    [data-bs-theme="dark"] .note-item{
-      background:#161616;
-      border-color: rgba(255,255,255,.14);
-    }
-    [data-bs-theme="dark"] .rightbar{
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border-color: rgba(255,255,255,.14);
-    }
-    #markdown-preview{
-      background:#fff;
-      border:1px solid #e9ecef;
-    }
-    [data-bs-theme="dark"] #markdown-preview{
-      background:#0f1115;
-      color: rgba(255,255,255,.9);
-      border-color: rgba(255,255,255,.14);
-    }
-    [data-bs-theme="dark"] .text-muted,
-    [data-bs-theme="dark"] .small.text-muted{
-      color: rgba(255,255,255,.72) !important;
-    }
-
-    /* Responsive layout (stack like app.html) */
     @media (max-width: 991.98px) {
       body { overflow:auto; }
       .shell {
         grid-template-columns: 1fr;
-        grid-template-rows: var(--nav-h) auto auto; /* nav + main + rightbar */
+        grid-template-rows: var(--nav-h) auto auto;
         height: auto;
         min-height: 100vh;
       }
       .sidebar { display:none; }
-      .rightbar {
-        grid-column: 1 / -1;
-        border-left: 0;
-        border-top: 1px solid #e9ecef;
-      }
-      [data-bs-theme="dark"] .rightbar{
-        border-top-color: rgba(255,255,255,.14);
-      }
+      .rightbar { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #e9ecef; }
     }
   </style>
 </head>
@@ -135,17 +97,16 @@
     <nav class="navbar bg-light border-bottom">
       <div class="container-fluid">
         <div class="d-flex align-items-center gap-2">
-          <!-- Mobile: open sidebar drawer -->
           <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sideDrawer" aria-label="Menu">
             <i class="fa-solid fa-bars"></i>
           </button>
-
           <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Home"><i class="fa-solid fa-house"></i></a>
           <span id="mtg-nav-title" class="fw-semibold">Meetings</span>
         </div>
         <div class="d-flex align-items-center gap-2">
           <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
           <a class="btn btn-sm btn-outline-primary" href="reader.html" title="Reader"><i class="fa-solid fa-book-open"></i></a>
+
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
               <i class="fas fa-language"></i> <span id="current-language">EN</span>
@@ -155,6 +116,7 @@
               <li><a class="dropdown-item" href="#" onclick="window.app && window.app.setLanguage('es')">Español</a></li>
             </ul>
           </div>
+
           <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
           <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings"><i class="fas fa-gear"></i></a>
         </div>
@@ -171,6 +133,9 @@
 
       <div class="side-title" id="mtg-pages-title">Pages</div>
       <div id="side-pages" class="side-list small text-muted px-2">Loading…</div>
+
+      <div class="side-title">Smart Folders</div>
+      <div id="side-smart" class="side-list small text-muted px-2">Loading…</div>
     </aside>
 
     <!-- Center -->
@@ -185,15 +150,16 @@
             <button id="btn-new-note" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#editorWrap">
               <i class="fa-solid fa-pen-to-square me-1"></i>New Note
             </button>
+
             <div class="btn-group">
               <button id="btn-import-dd" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
                 <i class="fa-solid fa-upload me-1"></i>Import
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="#" onclick="reader.importEpub()"><i class="fa-solid fa-book me-2"></i>EPUB</a></li>
-                <li><a class="dropdown-item" href="#" onclick="reader.importPdf()"><i class="fa-solid fa-file-pdf me-2"></i>PDF</a></li>
-                <li><a class="dropdown-item" href="#" onclick="reader.importDocx()"><i class="fa-solid fa-file-word me-2"></i>Word (.docx)</a></li>
-                <li><a class="dropdown-item" href="#" onclick="reader.importText()"><i class="fa-solid fa-file-lines me-2"></i>Text</a></li>
+                <li><button class="dropdown-item" type="button" id="imp-epub"><i class="fa-solid fa-book me-2"></i>EPUB</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-pdf"><i class="fa-solid fa-file-pdf me-2"></i>PDF</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-docx"><i class="fa-solid fa-file-word me-2"></i>Word (.docx)</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-text"><i class="fa-solid fa-file-lines me-2"></i>Text</button></li>
               </ul>
             </div>
           </div>
@@ -226,7 +192,7 @@
           <div class="p-3 border rounded">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="section-title" id="mtg-notes-title">Meeting Notes</div>
-              <div id="mtg-notes-sub" class="small text-muted">Use / menu, toolbar, and live preview</div>
+              <div class="small text-muted" id="mtg-notes-sub">Use / menu, toolbar, and live preview</div>
             </div>
 
             <input type="hidden" id="meeting-id"/>
@@ -266,7 +232,7 @@
                 <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('\n---\n','')"><i class="fa-solid fa-grip-lines"></i></button>
               </div>
 
-              <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for commands."></textarea>
+              <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for templates and commands."></textarea>
 
               <div class="d-flex justify-content-between align-items-center mt-2">
                 <div class="small text-muted" id="label-preview">Preview</div>
@@ -275,7 +241,7 @@
                   <button id="btn-save-note" class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()"><i class="fa-solid fa-save me-1"></i>Save</button>
                 </div>
               </div>
-              <div id="markdown-preview" class="border rounded p-2 small mt-1" style="min-height:80px;">Nothing yet.</div>
+              <div id="markdown-preview" class="border rounded p-2 bg-white small mt-1" style="min-height:80px;">Nothing yet.</div>
             </div>
           </div>
         </div>
@@ -303,15 +269,6 @@
     </aside>
   </div>
 
-  <!-- Offcanvas Library -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="libraryDrawer">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="fa-solid fa-books me-2"></i>Your Library</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body" id="library-list"><div class="text-muted">Loading…</div></div>
-  </div>
-
   <!-- Offcanvas Sidebar (mobile) -->
   <div class="offcanvas offcanvas-start" tabindex="-1" id="sideDrawer">
     <div class="offcanvas-header">
@@ -327,6 +284,9 @@
 
       <div class="side-title mt-2" id="mtg-pages-title-m">Pages</div>
       <div id="side-pages-m" class="side-list small text-muted">Loading…</div>
+
+      <div class="side-title mt-2">Smart Folders</div>
+      <div id="side-smart-m" class="side-list small text-muted">Loading…</div>
     </div>
   </div>
 
@@ -343,20 +303,17 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- App entry (modules) -->
+  <!-- App entry (global shell exposes window.app/window.reader/etc.) -->
   <script type="module" src="js/app.js"></script>
+
+  <!-- Page logic -->
   <script type="module">
     import { storage } from './js/storage.js';
-    import { reader } from './js/reader.js';
     import { notes } from './js/notes.js';
     import { schedule } from './js/schedule.js';
+    import { bindSlashMenu } from './js/notes/templates.js';
+    import * as SS from './js/search/savedSearches.js';
 
-    // escape helper
-    const escapeHtml = (s) => {
-      const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML;
-    };
-
-    // Live preview
     const contentEl = document.getElementById('meeting-content');
     const prevEl = document.getElementById('markdown-preview');
     const titleEl = document.getElementById('meeting-title');
@@ -364,23 +321,32 @@
     const typeEl  = document.getElementById('meeting-type');
     const idEl    = document.getElementById('meeting-id');
 
+    const toast = (msg, type='primary') => {
+      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
+      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, {autohide:true, delay:2000}).show();
+    };
+
     const renderPrev = () => {
       const src = contentEl.value || '';
       if (window.marked) prevEl.innerHTML = window.marked.parse(src);
       else prevEl.textContent = src || 'Nothing yet.';
     };
     contentEl.addEventListener('input', renderPrev);
+
     document.getElementById('btn-insert-scripture')?.addEventListener('click', () => {
       window.app?.insertScriptureRef?.();
       renderPrev();
     });
 
-    // Toast helper
-    const toast = (msg, type='primary') => {
-      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
-      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-      new bootstrap.Toast(el, {autohide:true, delay:2000}).show();
-    };
+    // Slash menu for editor
+    bindSlashMenu(contentEl);
+
+    // Wire Import dropdown to global reader helpers (exposed by app.js)
+    document.getElementById('imp-epub')?.addEventListener('click', ()=> window.reader?.importEpub?.());
+    document.getElementById('imp-pdf')?.addEventListener('click',  ()=> window.reader?.importPdf?.());
+    document.getElementById('imp-docx')?.addEventListener('click', ()=> window.reader?.importDocx?.());
+    document.getElementById('imp-text')?.addEventListener('click', ()=> window.reader?.importText?.());
 
     // Sidebar / library helpers
     async function loadSidebar(){
@@ -388,13 +354,13 @@
       const active = (all||[]).filter(d=>!d.deletedAt);
       const recent = [...active].sort((a,b)=>(new Date(b.lastOpened||b.updatedAt||b.createdAt||0))-(new Date(a.lastOpened||a.updatedAt||a.createdAt||0)));
 
-      // Continue (use first recent)
+      // Continue
       const cont = recent[0];
       const contHTML = cont ? `
         <div class="row-item">
           <div class="d-flex align-items-center gap-2 text-truncate">
             <i class="fa-solid fa-book-open text-muted"></i>
-            <span class="text-truncate">${escapeHtml(cont.title||'(Untitled)')}</span>
+            <span class="text-truncate">${cont.title||'(Untitled)'}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
             <button class="btn btn-outline-primary" onclick="openDoc('${cont.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
@@ -410,9 +376,9 @@
       const favDocs = active.filter(d => favIds.includes(d.id));
       const favHTML = favDocs.length ? favDocs.map(d => `
         <div class="row-item">
-          <div class="d-flex align-items-center gap-2 text-truncate" title="${escapeHtml(d.title||'(Untitled)')}">
+          <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
             <i class="fa-solid fa-star text-warning"></i>
-            <span class="text-truncate">${escapeHtml(d.title||'(Untitled)')}</span>
+            <span class="text-truncate">${d.title||'(Untitled)'}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
             <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
@@ -426,12 +392,12 @@
 
       // Pages
       const pagesHTML = active
-        .sort((a,b)=>(a.title||'').localeCompare(b.title||''))
+        .sort((a,b)=>(a.title||'').localeCompare(b.title||''))  
         .map(d => `
           <div class="row-item">
-            <div class="d-flex align-items-center gap-2 text-truncate" title="${escapeHtml(d.title||'(Untitled)')}">
+            <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
               <i class="fa-regular fa-file-lines text-muted"></i>
-              <span class="text-truncate">${escapeHtml(d.title||'(Untitled)')}</span>
+              <span class="text-truncate">${d.title||'(Untitled)'}</span>
             </div>
             <div class="side-actions btn-group btn-group-sm">
               <button class="btn btn-outline-warning" title="Favorite" onclick="toggleFav('${d.id}')"><i class="fa-regular fa-star"></i></button>
@@ -443,6 +409,20 @@
       const sPagesM = document.getElementById('side-pages-m');
       if (sPages) sPages.innerHTML = pagesHTML;
       if (sPagesM) sPagesM.innerHTML = pagesHTML;
+
+      // Smart Folders
+      const smartList = await SS.list();
+      const smartHTML = smartList.length
+        ? smartList.map(i=>`
+          <div class="sf-item">
+            <div class="text-truncate" title="${(i.title||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}">${i.title||''}</div>
+            <a class="btn btn-sm btn-outline-primary" href="notes.html" title="Open in Notes"><i class="fa-regular fa-folder-open"></i></a>
+          </div>`).join('')
+        : `<div class="small text-muted">No smart folders yet.</div>`;
+      const sSmart = document.getElementById('side-smart');
+      const sSmartM = document.getElementById('side-smart-m');
+      if (sSmart) sSmart.innerHTML = smartHTML;
+      if (sSmartM) sSmartM.innerHTML = smartHTML;
     }
 
     window.toggleFav = async (id) => { await storage.toggleFavorite?.(id); await loadSidebar(); };
@@ -471,7 +451,7 @@
         .map(n => `
           <div class="note-item" data-id="${n.id}">
             <div class="d-flex justify-content-between">
-              <div class="fw-semibold">${escapeHtml(n.title || 'Untitled')} <span class="badge text-bg-light ms-1">${escapeHtml(n.type||'-')}</span></div>
+              <div class="fw-semibold">${(n.title || 'Untitled')} <span class="badge text-bg-light ms-1">${n.type||'-'}</span></div>
               <div class="small text-muted">${new Date(n.updatedAt||n.createdAt).toLocaleString()}</div>
             </div>
             <div class="small mt-1">${(n.content||'').replace(/[<>&]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]))}</div>
@@ -485,12 +465,12 @@
     window.editMeeting = async (id) => {
       const all = await (storage.getMeetingNotes?.() || []);
       const n = all.find(x=>x.id===id); if(!n) return;
+      document.getElementById('editorWrap')?.classList.add('show');
       idEl.value = n.id;
       titleEl.value = n.title || '';
       dateEl.value  = (n.date||'').slice(0,10);
       typeEl.value  = n.type || 'midweek';
       contentEl.value = n.content || '';
-      document.getElementById('editorWrap').classList.add('show');
       renderPrev();
     };
     window.delMeeting = async (id) => {
@@ -504,69 +484,26 @@
       }
     };
 
-    // Library Drawer
-    async function openLibrary(){
-      try {
-        const list = await (storage.getDocuments?.() || []);
-        const active = (list||[]).filter(d => !d.deletedAt);
-        const box = document.getElementById('library-list');
-        if (!active.length) box.innerHTML = `<div class="text-muted">Your library is empty.</div>`;
-        else {
-          box.innerHTML = active.map(d => `
-            <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 shadow-sm">
-              <div>
-                <div class="fw-semibold">${escapeHtml(d.title || '(Untitled)')}</div>
-                <div class="text-muted small">${(d.type || '').toUpperCase()} · ${new Date(d.updatedAt || d.createdAt || Date.now()).toLocaleString()}</div>
-              </div>
-              <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')"><i class="fa-solid fa-folder-open"></i></button>
-              </div>
-            </div>`).join('');
-        }
-        new bootstrap.Offcanvas(document.getElementById('libraryDrawer')).show();
-      } catch (e) { console.error(e); toast('Failed to open library','danger'); }
-    }
-    window.openLibrary = openLibrary;
-
-    /* ------------ Language wiring specific to this page ------------ */
+    // i18n for this page (uses window.app.translate)
     window.updateMeetingLanguageUI = function(){
       const t = (k) => window.app?.translate?.(k) || k;
+      const id = (s, v)=>{ const el=document.getElementById(s); if(el) el.textContent=v; };
 
-      // Navbar title
-      const navT = document.getElementById('mtg-nav-title'); if (navT) navT.textContent = t('nav_meetings');
-
-      // Sidebar section titles (desktop + mobile)
-      const s1 = document.getElementById('mtg-continue-title'); if (s1) s1.textContent = t('continue');
-      const s1m= document.getElementById('mtg-continue-title-m'); if (s1m) s1m.textContent = t('continue');
-      const s2 = document.getElementById('mtg-fav-title'); if (s2) s2.textContent = t('favorites');
-      const s2m= document.getElementById('mtg-fav-title-m'); if (s2m) s2m.textContent = t('favorites');
-      const s3 = document.getElementById('mtg-pages-title'); if (s3) s3.textContent = t('pages');
-      const s3m= document.getElementById('mtg-pages-title-m'); if (s3m) s3m.textContent = t('pages');
+      id('mtg-nav-title', t('nav_meetings'));
+      id('mtg-continue-title', t('continue')); id('mtg-continue-title-m', t('continue'));
+      id('mtg-fav-title', t('favorites'));     id('mtg-fav-title-m', t('favorites'));
+      id('mtg-pages-title', t('pages'));       id('mtg-pages-title-m', t('pages'));
       const sideTitle = document.getElementById('mtg-side-title'); if (sideTitle) sideTitle.textContent = t('menu');
-
-      // Hero
-      const ht = document.getElementById('mtg-hero-title'); if (ht) ht.textContent = t('meeting_hero_title');
-      const hs = document.getElementById('mtg-hero-sub'); if (hs) hs.textContent = t('meeting_hero_sub');
-
-      // Buttons
+      id('mtg-hero-title', t('meeting_hero_title'));
+      id('mtg-hero-sub', t('meeting_hero_sub'));
       const bn = document.getElementById('btn-new-note'); if (bn) bn.innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i>${t('btn_new_note')}`;
       const bi = document.getElementById('btn-import-dd'); if (bi) bi.innerHTML = `<i class="fa-solid fa-upload me-1"></i>${t('import')}`;
       const am = document.getElementById('btn-add-midweek'); if (am) am.innerHTML = `<i class="fa-solid fa-plus"></i> ${t('btn_add')}`;
       const aw = document.getElementById('btn-add-weekend'); if (aw) aw.innerHTML = `<i class="fa-solid fa-plus"></i> ${t('btn_add')}`;
       const sv = document.getElementById('btn-save-note'); if (sv) sv.innerHTML = `<i class="fa-solid fa-save me-1"></i>${t('btn_save')}`;
-
-      // Section headings
-      const mw = document.getElementById('mtg-midweek-title'); if (mw) mw.textContent = t('midweek');
-      const wk = document.getElementById('mtg-weekend-title'); if (wk) wk.textContent = t('weekend');
-      const nt = document.getElementById('mtg-notes-title'); if (nt) nt.textContent = t('meeting_notes_title');
-      const ns = document.getElementById('mtg-notes-sub'); if (ns) ns.textContent = t('meeting_notes_sub');
-      const lt = document.getElementById('mtg-list-title'); if (lt) lt.textContent = t('my_meeting_notes');
-      const ls = document.getElementById('mtg-list-sub'); if (ls) ls.textContent = t('my_meeting_notes_sub');
-
-      // Labels
-      const lbT = document.getElementById('label-title'); if (lbT) lbT.textContent = t('label_title');
-      const lbD = document.getElementById('label-date'); if (lbD) lbD.textContent = t('label_date');
-      const lbY = document.getElementById('label-type'); if (lbY) lbY.textContent = t('label_type');
+      id('mtg-midweek-title', t('midweek')); id('mtg-weekend-title', t('weekend'));
+      id('mtg-notes-title', t('meeting_notes_title')); id('mtg-notes-sub', t('meeting_notes_sub'));
+      id('mtg-list-title', t('my_meeting_notes'));     id('mtg-list-sub', t('my_meeting_notes_sub'));
       const scr = document.getElementById('btn-insert-scripture'); if (scr) scr.innerHTML = `<i class="fa-solid fa-book-bible me-1"></i> ${t('btn_scripture')}`;
       const pv  = document.getElementById('label-preview'); if (pv) pv.textContent = t('preview');
       const rnT = document.getElementById('right-notes-title'); if (rnT) rnT.innerHTML = `<i class="fa-solid fa-sticky-note me-1"></i> ${t('right_notes_title')}`;
@@ -574,25 +511,32 @@
 
     // Init
     (async () => {
-      // tiny delay: let app.js attach window.app first
-      await new Promise(r => setTimeout(r, 80));
-      window.app?.bindSlashMenu?.();
-      await schedule.init?.();
+      try { await storage.init?.(); } catch {}
+      try { await schedule.init?.(); } catch {}
       await loadSidebar();
       await loadMeetingNotes();
-
-      // apply current language on first load
       window.updateMeetingLanguageUI?.();
-    })();
-  </script>
 
-  <!-- SW registration (safe no-op if already registered) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js', { scope: './' }).catch(()=>{});
-      });
-    }
+      // Handle deep link: #note=<id> (open created note) or legacy #template=<id> (create then open)
+      const hash = location.hash.replace(/^#/, '');
+      if (hash) {
+        const p = new URLSearchParams(hash);
+        const noteId = p.get('note');
+        const tplId  = p.get('template');
+        if (noteId) {
+          window.editMeeting?.(noteId);
+          document.getElementById('editorWrap')?.classList.add('show');
+        } else if (tplId) {
+          // Delegate creation to app.js (creates note & redirects here with #note=...)
+          if (window.app?.createFromTemplate) {
+            await window.app.createFromTemplate(tplId);
+          } else {
+            // Fallback: just insert a title stub
+            titleEl.value = (tplId.charAt(0).toUpperCase()+tplId.slice(1)) + ' Note';
+          }
+        }
+      }
+    })();
   </script>
 </body>
 </html>

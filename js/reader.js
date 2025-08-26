@@ -11,6 +11,28 @@ function resolveContainer(cRef) {
   return cRef;
 }
 
+// reader.js (top)
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureEPUBDeps() {
+  if (!window.JSZip) {
+    await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+  }
+  if (!window.ePub) {
+    await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js');
+  }
+}
+
+
 // ensure pdf.js worker is configured even if page forgot to set it
 function ensurePdfWorker() {
   try {
@@ -139,6 +161,9 @@ class Reader {
       await storage.saveDocument?.(doc);
       await window.activity?.logDocOpened?.(doc);
     } catch {}
+
+
+
   }
 
   /* ---------------- Navigation ---------------- */

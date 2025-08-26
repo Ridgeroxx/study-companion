@@ -26,6 +26,23 @@ function generateId(prefix='item'){
   const r = crypto.randomUUID?.() || Math.random().toString(36).slice(2,10);
   return `${prefix}_${r}`;
 }
+
+// /js/storage.js (inside init)
+const SCHEMA_VERSION_KEY = 'schema_version';
+const v = (await localforage.getItem(SCHEMA_VERSION_KEY)) || 1;
+if (v < 2) {
+  await migrateToV2();
+  await localforage.setItem(SCHEMA_VERSION_KEY, 2);
+}
+
+async function migrateToV2() {
+  // add containers if missing
+  const def = { savedSearches: [], templates: [], security: {}, sync:{}, ocr:{pages:[]}, links:{wikilinks:[], backlinksIndex:{}} };
+  const s = (await getSettings()) || {};
+  s.new = { ...(s.new||{}), ...def };
+  await saveSettings(s); // your existing setter
+}
+
 async function _get(k, fb){ try{ const v = await LF.getItem(k); return v ?? fb; }catch{return fb} }
 async function _set(k, v){ return LF.setItem(k, v) }
 async function _rm(k){ try{ await LF.removeItem(k) }catch{} }

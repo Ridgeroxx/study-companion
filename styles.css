@@ -488,4 +488,6 @@
   0%,100% { transform: translate3d(0,0,0) scale(1); }
   50%     { transform: translate3d(4vw, -3vh, 0) scale(1.08); }
 }
+/* Slash menu tweaks */
+.position-absolute.bg-body.border.rounded.shadow.p-1.small { max-width: 280px; }
 

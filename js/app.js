@@ -1,12 +1,16 @@
-// /js/app.js
 // App shell + home page actions (global & safe for inline bridges)
 
 import { storage } from './storage.js';
 import { reader } from './reader.js';
 import { notes } from './notes.js';
 import { schedule } from './schedule.js';
+import { FLAGS } from './flags.js';
+import { bindSlashMenu } from './notes/templates.js';
+import { lock } from './security/lock.js';
 
-// Minimal i18n map for visible texts on Home
+// call regardless; it only activates if user enabled lock in settings 
+try {await lock.init({idleMinutes: 15});} catch {}
+
 const I18N = {
   en: {
     welcome: 'Welcome back 👋',
@@ -25,29 +29,7 @@ const I18N = {
     nothing_yet: 'Nothing yet. Import a document or create a page to begin.',
     empty_library: 'Your library is empty.',
     no_recent: 'No recent items.',
-    no_favorites: 'No favorites yet.',
-    nav_meetings: 'Meetings',
-    continue: 'Continue',
-    favorites: 'Favorites',
-    pages: 'Pages',
-    menu: 'Menu',
-    meeting_hero_title: 'Congregation Meetings',
-    meeting_hero_sub: 'Plan midweek & weekend, and take fast notes during talks.',
-    btn_new_note: 'New Note',
-    btn_add: 'Add',
-    meeting_notes_title: 'Meeting Notes',
-    meeting_notes_sub: 'Use / menu, toolbar, and live preview',
-    label_title: 'Title',
-    label_date: 'Date',
-    label_type: 'Type',
-    btn_scripture: 'Scripture',
-    preview: 'Preview',
-    btn_save: 'Save',
-    my_meeting_notes: 'My Meeting Notes',
-    my_meeting_notes_sub: 'Click any note to edit',
-    right_notes_title: 'Notes (quick view)',
-    midweek: 'Midweek',
-    weekend: 'Weekend',
+    no_favorites: 'No favorites yet.'
   },
   es: {
     welcome: 'Bienvenido de nuevo 👋',
@@ -66,29 +48,88 @@ const I18N = {
     nothing_yet: 'Aún no hay nada. Importa un documento o crea una página para empezar.',
     empty_library: 'Tu biblioteca está vacía.',
     no_recent: 'No hay elementos recientes.',
-    no_favorites: 'Aún no hay favoritos.',
-    nav_meetings: 'Reuniones',
-continue: 'Continuar',
-favorites: 'Favoritos',
-pages: 'Páginas',
-menu: 'Menú',
-meeting_hero_title: 'Reuniones de la congregación',
-meeting_hero_sub: 'Planifica entre semana y fin de semana, y toma notas rápidas durante los discursos.',
-btn_new_note: 'Nueva nota',
-btn_add: 'Añadir',
-meeting_notes_title: 'Notas de la reunión',
-meeting_notes_sub: 'Usa el menú /, la barra de herramientas y la vista previa en vivo',
-label_title: 'Título',
-label_date: 'Fecha',
-label_type: 'Tipo',
-btn_scripture: 'Escritura',
-preview: 'Vista previa',
-btn_save: 'Guardar',
-my_meeting_notes: 'Mis notas de reunión',
-my_meeting_notes_sub: 'Haz clic en cualquier nota para editarla',
-right_notes_title: 'Notas (vista rápida)',
-midweek: 'Entre semana',
-weekend: 'Fin de semana',
+    no_favorites: 'Aún no hay favoritos.'
+  }
+};
+
+const TEMPLATES = {
+  outline: {
+    title: 'Outline',
+    type: 'midweek',
+    body:
+`# Title
+
+## Main Points
+- Point 1
+- Point 2
+- Point 3
+
+## Scripture
+- [ ] Add scripture references here
+
+## Actions
+- [ ] Task 1
+- [ ] Task 2
+`
+  },
+  study: {
+    title: 'Study Note',
+    type: 'midweek',
+    body:
+`# Study Note
+
+**Topic:**  
+**Key Text:**  
+
+## Notes
+- 
+
+## Questions
+- 
+
+## Takeaways
+- 
+`
+  },
+  sermon: {
+    title: 'Sermon Outline',
+    type: 'weekend',
+    body:
+`# Sermon Outline
+
+**Theme:**  
+**Key Scripture:**  
+
+## Introduction
+- 
+
+## Body
+- 
+
+## Conclusion
+- 
+
+## Application
+- 
+`
+  },
+  meeting: {
+    title: 'Meeting Notes',
+    type: 'midweek',
+    body:
+`# Meeting Notes
+
+**Date:** ${new Date().toISOString().slice(0,10)}
+
+## Highlights
+- 
+
+## Scriptures
+- 
+
+## To remember
+- 
+`
   }
 };
 
@@ -98,7 +139,7 @@ class App {
     this.themeKey = 'app_theme';
     this.currentLanguage = localStorage.getItem(this.langKey) || 'en';
 
-    // One routing hook used by storage/import helpers
+    // When a file import finishes, open it
     window.onDocumentImported = (doc) => {
       if (!doc?.id) return;
       location.href = `reader.html?doc=${encodeURIComponent(doc.id)}`;
@@ -108,24 +149,30 @@ class App {
   async init() {
     try { await storage.init?.(); } catch {}
 
-    // Expose globals so inline onclicks never fail
+    // expose globals for inline bridges
     window.storage = storage;
     window.reader = reader;
     window.notes = notes;
     window.schedule = schedule;
+    window.app = this;
 
-    // Theme + language setup
+    // bind slash menu only if the meetings editor exists on this page
+    const meetingEditor = document.getElementById('meeting-content');
+    if (meetingEditor) { try { bindSlashMenu(meetingEditor); } catch {} }
+
     this._initThemeToggle();
     this._initLanguageButtons();
 
-    // Wire homepage buttons (defensive: only if they exist)
     this._wireHomeButtons();
-
-    // Fill home lists if we are on a page that has them
     try { await this.loadHomeLists(); } catch (e) { console.warn(e); }
-
-    // After lists render, update visible texts for chosen language
     this.updateLanguageUI();
+
+    // Optional: if feature-flag requires lock immediately at boot
+    (async ()=>{
+  try {
+    if (FLAGS?.lock) await lock.init({ enabled:true, idleMinutes: 15 });
+  } catch(e) { /* optional */ }
+  })();
   }
 
   /* ---------------- THEME / LANGUAGE ---------------- */
@@ -147,7 +194,6 @@ class App {
       try { localStorage.setItem(this.langKey, this.currentLanguage); } catch {}
       const badge = document.getElementById('current-language');
       if (badge) badge.textContent = this.currentLanguage.toUpperCase();
-      // refresh visible copy
       this.updateLanguageUI();
     };
     document.getElementById('lang-en')?.addEventListener('click', () => set('en'));
@@ -160,27 +206,23 @@ class App {
     return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
   }
 
-    setLanguage(lang) {
+  setLanguage(lang) {
     this.currentLanguage = (lang === 'es') ? 'es' : 'en';
     try { localStorage.setItem(this.langKey, this.currentLanguage); } catch {}
     const badge = document.getElementById('current-language');
     if (badge) badge.textContent = this.currentLanguage.toUpperCase();
-    // Update all pages that are open
     this.updateLanguageUI?.();
-    // Meetings page hook
     try { window.updateMeetingLanguageUI?.(); } catch {}
   }
 
-
-  // Updates only visible texts already present in app.html (no structural changes)
   updateLanguageUI() {
-    // Hero title + subtitle
+    // Hero
     const heroTitle = document.querySelector('.hero .h5.fw-bold');
     const heroSub = document.querySelector('.hero .small.text-muted');
     if (heroTitle) heroTitle.textContent = this.translate('welcome');
     if (heroSub)   heroSub.textContent   = this.translate('welcome_sub');
 
-    // Primary buttons (keep icons intact)
+    // Buttons
     const newPageBtn = document.getElementById('btn-new-page');
     if (newPageBtn) newPageBtn.innerHTML = `<i class="fa-solid fa-file-circle-plus me-1"></i>${this.translate('new_page')}`;
 
@@ -199,37 +241,19 @@ class App {
     const openMini = document.getElementById('open-lib-mini');
     if (openMini) openMini.textContent = this.translate('open');
 
-    // Section headings (in order as present in app.html)
+    // Section headings (in order)
     const sections = document.querySelectorAll('.section-title');
     if (sections[0]) sections[0].textContent = this.translate('quick_capture');
     if (sections[1]) sections[1].textContent = this.translate('continue_reading');
     if (sections[2]) sections[2].textContent = this.translate('recent');
     if (sections[3]) sections[3].textContent = this.translate('your_library');
 
-    // Secondary subtitles
-    const quickSub = document.querySelector('.glass-card .small.text-muted');
-    if (quickSub) quickSub.textContent = this.translate('quick_capture_sub');
-
-    // Empty state texts if visible
-    const contBox = document.getElementById('continue-box');
-    if (contBox && contBox.textContent.includes('Nothing yet')) {
-      contBox.innerHTML = `<div class="text-muted">${this.translate('nothing_yet')}</div>`;
-    }
-    const mini = document.getElementById('library-mini');
-    if (mini && mini.textContent.includes('Your library is empty')) {
-      mini.innerHTML = `<div class="col-12"><div class="text-muted">${this.translate('empty_library')}</div></div>`;
-    }
-    const sRecent = document.getElementById('side-recent');
-    if (sRecent && sRecent.textContent.includes('No recent items')) {
-      sRecent.innerHTML = `<div class="small text-muted">${this.translate('no_recent')}</div>`;
-    }
-    const favBox = document.getElementById('side-favorites');
-    if (favBox && favBox.textContent.includes('No favorites yet')) {
-      favBox.innerHTML = `<div class="small text-muted">${this.translate('no_favorites')}</div>`;
-    }
+    // Quick capture subtitle
+    const qc = document.querySelector('.glass-card .small.text-muted');
+    if (qc) qc.textContent = this.translate('quick_capture_sub');
   }
 
-  /* ---------------- NAV HELPERS (used by inline bridges) ---------------- */
+  /* ---------------- NAV HELPERS ---------------- */
   openDoc(id) {
     if (!id) return;
     location.href = `reader.html?doc=${encodeURIComponent(id)}`;
@@ -256,14 +280,13 @@ class App {
 
   async exportStudy() {
     try {
-      // Minimal export (docs, favorites, bookmarks, annotations, meeting notes, schedules)
       const docs = await storage.getDocuments();
       const favs = await storage.getFavorites();
       const notesAll = [];
       const bms = {};
       for (const d of docs) {
         const ann = await storage.getAnnotations(d.id);
-        notesAll.push(...ann);
+        notesAll.push(...(ann||[]));
         bms[d.id] = await storage.getBookmarks(d.id);
       }
       const meeting = await storage.getMeetingNotes?.() || [];
@@ -371,6 +394,32 @@ class App {
     }
   }
 
+  /* ---------------- Templates: create a real note, then open editor ---------------- */
+  async createFromTemplate(templateId) {
+    const t = TEMPLATES[templateId];
+    if (!t) return this.toast('Unknown template', 'danger');
+
+    const id = storage.generateId ? storage.generateId('mtg') : `mtg_${Date.now()}`;
+    const now = new Date().toISOString();
+    const note = {
+      id,
+      title: t.title,
+      date: now.slice(0,10),
+      type: t.type || 'midweek',
+      content: t.body,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    try {
+      await storage.saveMeetingNote?.(note);
+      location.href = `meetings.html#note=${encodeURIComponent(id)}`;
+    } catch (e) {
+      console.error(e);
+      this.toast('Could not create from template', 'danger');
+    }
+  }
+
   /* ---------------- HOME LISTS ---------------- */
   async loadHomeLists() {
     const all = await (storage.getActiveDocuments?.() || storage.getDocuments?.() || []);
@@ -446,7 +495,7 @@ class App {
         </div>`).join('') : `<div class="small text-muted">${this.translate('no_favorites')}</div>`;
     }
 
-    // Sidebar: Recent (list)
+    // Sidebar: Recent
     const sRecent = document.getElementById('side-recent');
     if (sRecent) {
       sRecent.innerHTML = recent.slice(0,10).map(d => `
@@ -456,7 +505,7 @@ class App {
         </div>`).join('') || `<div class="small text-muted">${this.translate('no_recent')}</div>`;
     }
 
-    // Sidebar: Pages (we’ll reuse active docs as simple pages)
+    // Sidebar: Pages
     const sPages = document.getElementById('side-pages');
     if (sPages) {
       sPages.innerHTML = active
@@ -505,18 +554,22 @@ class App {
     document.getElementById('btn-open-library')?.addEventListener('click', () => this.openLibraryDrawer());
     document.getElementById('open-lib-mini')?.addEventListener('click', (e) => { e.preventDefault(); this.openLibraryDrawer(); });
     document.getElementById('view-all')?.addEventListener('click', (e) => { e.preventDefault(); this.openLibraryDrawer(); });
-    document.getElementById('btn-export')?.addEventListener('click', () => this.exportStudy());
 
-    // rudimentary search:
+    // Search → open Notes page with ?q=
     const sb = document.getElementById('search-btn');
     const si = document.getElementById('search-input');
-    const runSearch = async () => {
+    const runSearch = () => {
       const q = (si?.value || '').trim();
       if (!q) return;
-      this.toast(`Search not fully wired yet. You searched: "${q}"`, 'secondary');
+      location.href = `notes.html?q=${encodeURIComponent(q)}`;
     };
     sb?.addEventListener('click', runSearch);
     si?.addEventListener('keypress', (e)=>{ if(e.key==='Enter') runSearch(); });
+
+    // Template buttons → create a real note
+    document.querySelectorAll('[data-template]').forEach(btn=>{
+      btn.addEventListener('click', ()=> this.createFromTemplate(btn.getAttribute('data-template')));
+    });
   }
 }
 

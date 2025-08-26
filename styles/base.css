@@ -1,0 +1,20 @@
+/* /styles/base.css */
+:root{
+  --radius: 12px;
+  --elev-1: 0 10px 30px rgba(0,0,0,.06);
+  --elev-2: 0 14px 40px rgba(0,0,0,.10);
+}
+.card, .glass-card, .hero { border-radius: var(--radius) }
+.btn, .form-control, .form-select { border-radius: 10px }
+a, button { transition: transform .12s ease, box-shadow .12s ease; }
+a:active, button:active { transform: translateY(1px) }
+@media (max-width: 576px) {
+  .navbar .container-fluid { gap: .25rem; }
+  .navbar .btn.btn-sm { padding: .25rem .4rem; }
+  .navbar .brand { font-size: .95rem; }
+  .navbar .d-flex.align-items-center.gap-2 { gap: .35rem !important; }
+}
+.notes-filters-sticky { position: sticky; top: 56px; z-index: 100; backdrop-filter: blur(6px); background: color-mix(in srgb, var(--bs-body-bg) 85%, transparent); }
+/* Tidy spacing and hover states */
+.sf-item .btn { --bs-btn-padding-y: .15rem; --bs-btn-padding-x: .45rem; }
+.small.text-muted { color: var(--bs-secondary-color) !important; }

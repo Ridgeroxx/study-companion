@@ -1,0 +1,8 @@
+/* /styles/dark.css */
+[data-bs-theme="dark"] .hero,
+[data-bs-theme="dark"] .glass-card { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12) }
+[data-bs-theme="dark"] .small.text-muted { color: rgba(255,255,255,.70)!important }
+[data-bs-theme="dark"] .bg-white { background-color:#161616!important; color:#eaeaea }
+/* Dark reading polish */
+[data-bs-theme="dark"] blockquote { background: rgba(255,255,255,.06); border-left-color: rgba(13,110,253,.6); }
+[data-bs-theme="dark"] .print-wrap { color:#e9ecef; }

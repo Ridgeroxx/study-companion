@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<script type="module">
+  import { storage } from './js/storage.js';
+
+  async function saveShared({ title, text, url }) {
+    try { await storage.init?.(); } catch {}
+    const note = {
+      id: 'ann_'+Date.now(),
+      documentId: '__inbox__', kind:'note',
+      text: text || '',
+      note: (title? `# ${title}\n\n` : '') + (url? `Source: ${url}\n\n` : ''),
+      tags: ['inbox','shared'],
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    };
+    const list = await (storage.getAllAnnotations?.() || []);
+    list.push(note);
+    await storage.saveAllAnnotations?.(list);
+  }
+
+  (async ()=>{
+    // Some browsers pass via POST, some fallback to query params
+    if (document.referrer || location.search) {
+      const p = new URLSearchParams(location.search);
+      await saveShared({ title: p.get('title'), text: p.get('text'), url: p.get('url') });
+    }
+    location.replace('notes.html');
+  })();
+</script>

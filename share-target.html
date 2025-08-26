@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Share Into • Study Companion</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+</head>
+<body>
+<script type="module">
+  import { storage } from './js/storage.js';
+  (async ()=>{
+    try { await storage.init?.(); } catch {}
+    const p = new URLSearchParams(location.search);
+    const title = p.get('title') || p.get('text')?.slice(0,60) || 'Shared item';
+    const url   = p.get('url') || '';
+    const text  = p.get('text') || '';
+    const body  = [
+      url ? `Source: ${url}` : '',
+      text ? `\n\n${text}` : ''
+    ].filter(Boolean).join('\n');
+
+    const note = {
+      id: crypto.randomUUID(),
+      title,
+      type: 'inbox',
+      date: new Date().toISOString(),
+      content: body + '\n',
+      tags: ['inbox','clipped']
+    };
+    await storage.saveMeetingNote?.(note) || await storage.saveLooseNote?.(note); // support either impl
+    location.replace('notes.html'); // go to All Notes list
+  })();
+</script>
+</body>
+</html>

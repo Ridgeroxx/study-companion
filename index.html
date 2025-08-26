@@ -25,18 +25,20 @@
 
   <!-- CSP: allow the CDNs you actually use -->
   <meta http-equiv="Content-Security-Policy"
-        content="
-          default-src 'self';
-          img-src 'self' data: blob:;
-          font-src 'self' https://cdnjs.cloudflare.com data:;
-          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-          script-src 'self' 'unsafe-inline';
-          connect-src 'self' blob:;
-          worker-src 'self' blob:;
-          object-src 'none';
-          base-uri 'self';
-          upgrade-insecure-requests;
-        ">
+  content="
+    default-src 'self';
+    img-src 'self' data: blob:;
+    font-src 'self' data: https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+    connect-src 'self' blob:;
+    worker-src 'self' blob: https://cdnjs.cloudflare.com;
+    object-src 'none';
+    base-uri 'self';
+    upgrade-insecure-requests;
+  ">
+
 
   <style>
     :root{ --bg1:#0d6efd; --bg2:#6610f2; --bg3:#ffc107; }
