@@ -3,502 +3,335 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Kellz Study Companion</title>
+  <title>Study Companion — Home</title>
 
-  <!-- Force landing first -->
-  <script>
-    try{
-      if (sessionStorage.getItem('landingHidden') !== '1' &&
-          !/index\.html$/i.test(location.pathname)) {
-        location.replace('index.html');
-      }
-    }catch(e){}
-  </script>
-
-  <!-- App icons / PWA -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E">
+  <!-- PWA / Icons -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="application-name" content="Study Companion">
-  <meta name="theme-color" content="#136FF2">
+  <meta name="theme-color" content="#0d6efd">
   <meta name="mobile-web-app-capable" content="yes">
-  <!-- iOS -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="icons/logo.png">
-  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%230d6efd'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E">
 
   <!-- CSP -->
   <meta http-equiv="Content-Security-Policy"
-  content="
-    default-src 'self';
-    img-src 'self' data: blob:;
-    font-src 'self' data: https://cdnjs.cloudflare.com;
-    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
-    connect-src 'self' blob:;
-    worker-src 'self' blob: https://cdnjs.cloudflare.com;
-    object-src 'none';
-    base-uri 'self';
-    upgrade-insecure-requests;
-  ">
-
+        content="default-src 'self';
+                 img-src 'self' data: blob:;
+                 font-src 'self' data: https://cdnjs.cloudflare.com;
+                 style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+                 style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+                 script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+                 connect-src 'self' blob:;
+                 worker-src 'self' blob: https://cdnjs.cloudflare.com;
+                 object-src 'none';
+                 base-uri 'self';
+                 upgrade-insecure-requests;">
 
   <!-- CSS libs -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
-  <!-- Optional global styles -->
-  <link rel="stylesheet" href="styles/base.css">
-  <link rel="stylesheet" href="styles/dark.css">
+  <!-- Vendor core for your ecosystem -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(window['pdfjsLib']){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- Vendor core -->
-<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-  if (window['pdfjsLib']) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-</script>
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-
-  <!-- Activity stub -->
-  <script>window.activity=window.activity||{logDocOpened(){},logDocImported(){},logNote(){},log(){}};</script>
-
+  <!-- 3D look & layout -->
   <style>
-    :root{ --nav-h:56px; --side-w:280px; --right-w:380px;}
-    html,body{height:100%}
-    body{overflow:hidden;background:var(--bs-body-bg)}
-    .shell{display:grid; grid-template-columns:var(--side-w) 1fr var(--right-w); grid-template-rows:var(--nav-h) 1fr; height:100vh}
-    .shell>nav{grid-column:1 / -1}
-    .sidebar{border-right:1px solid #e9ecef; background:var(--bs-body-bg); overflow:auto}
-    .rightbar{border-left:1px solid #e9ecef; background:linear-gradient(180deg, rgba(13,110,253,.04), rgba(13,110,253,.02)); overflow:auto}
-    .center{overflow:auto}
-    .navbar .brand{font-weight:800; letter-spacing:.25px}
-    .hero{border:1px solid #e9ecef; background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.64));
-          backdrop-filter: blur(6px); border-radius:16px; padding:22px; box-shadow:0 6px 28px rgba(13,110,253,.08)}
-    .glass-card{border:1px solid #e9ecef; border-radius:14px; background:rgba(255,255,255,.82); box-shadow:0 10px 30px rgba(0,0,0,.08)}
-    .section-title{font-weight:700; letter-spacing:.2px}
-    .note-item{border:1px solid #e9ecef; border-radius:10px; padding:.75rem; margin-bottom:.5rem; background:#fff}
-    [data-bs-theme="dark"] .glass-card{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14)}
-    [data-bs-theme="dark"] .hero{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.14)}
-    [data-bs-theme="dark"] .text-muted,[data-bs-theme="dark"] .small.text-muted{color:rgba(255,255,255,.72)!important}
-    [data-bs-theme="dark"] .note-item{background:#171717; border-color:rgba(255,255,255,.12)}
-    .ico{width:18px;height:18px}
-    .sf-item{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem; border-radius:8px;}
-    .sf-item:hover{ background: rgba(0,0,0,.03); }
-
-    /* Featured cards */
-    .feat-card{border:1px solid #e9ecef; border-radius:12px; overflow:hidden; background:var(--bs-body-bg)}
-    .feat-img{display:block; width:100%; aspect-ratio: 3 / 1.6; background: #f3f6ff; }
-    [data-bs-theme="dark"] .feat-img{ background:#121520; }
-    .feat-img svg{width:100%; height:100%; display:block}
-
-    /* Navbar: make it responsive & avoid wrapping */
-    .navbar{ height: var(--nav-h); }
-    .navbar .navbar-brand{ font-weight:800; letter-spacing:.25px; }
-    .navbar .btn{ white-space:nowrap; }
-    .navbar .right-actions{ gap:.4rem; }
-    @media (max-width: 991.98px){
-      body { overflow:auto; }
-      .shell {
-        grid-template-columns: 1fr;
-        grid-template-rows: var(--nav-h) auto auto;
-        height:auto; min-height:100vh;
-      }
-      .sidebar { display:none; }
-      .rightbar { grid-column:1/-1; border-left:0; border-top:1px solid #e9ecef; }
-      .center { overflow:visible; }
-      .container-fluid { padding-bottom:1rem; }
+    :root{
+      --radius: 16px;
+      --card-bg: var(--bs-body-bg);
+      --shadow-3d: 0 12px 34px rgba(13,110,253,.22), 0 2px 10px rgba(0,0,0,.08);
+      --shadow-soft: 0 10px 28px rgba(0,0,0,.08);
     }
+    html,body{height:100%}
+    body{
+      margin:0; min-height:100vh; overflow-x:hidden;
+      background:
+        radial-gradient(1200px 700px at -10% -20%, rgba(13,110,253,.12), transparent 60%),
+        radial-gradient(800px 600px at 110% 120%, rgba(32,201,151,.14), transparent 60%),
+        linear-gradient(180deg, var(--bs-body-bg), var(--bs-body-bg));
+    }
+
+    /* Nav */
+    .nav-3d{
+      backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    [data-bs-theme="dark"] .nav-3d{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-color: rgba(255,255,255,.14);
+    }
+
+    /* Panels */
+    .panel-3d{
+      background: var(--card-bg); border-radius: var(--radius);
+      border: 1px solid rgba(0,0,0,.06);
+      box-shadow: var(--shadow-3d); padding:16px;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .panel-3d:hover{ transform: translateY(-2px); }
+    [data-bs-theme="dark"] .panel-3d{ border-color: rgba(255,255,255,.12); }
+    .section-title{ font-weight:800; letter-spacing:.2px; }
+
+    /* Fancy buttons */
+    .btn-3d{ box-shadow: 0 8px 22px rgba(13,110,253,.25); border:1px solid rgba(13,110,253,.38); }
+    .btn-3d:active{ transform: translateY(1px); box-shadow: 0 3px 10px rgba(13,110,253,.22); }
+
+    /* Planner Kanban */
+    .kanban{ display:grid; grid-template-columns: 1fr; gap:14px; }
+    @media (min-width: 992px){ .kanban{ grid-template-columns: repeat(3, 1fr); } }
+    .lane{ border-radius: 14px; border:1px solid rgba(0,0,0,.06); box-shadow: var(--shadow-soft); background: var(--card-bg); padding:10px; }
+    [data-bs-theme="dark"] .lane{ border-color: rgba(255,255,255,.12); }
+    .lane-title{ font-weight:700; margin-bottom:6px; }
+    .task-card{
+      border-radius: 12px; border: 1px solid rgba(0,0,0,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.90));
+      padding: 10px 12px; box-shadow: 0 8px 20px rgba(0,0,0,.06);
+      transition: transform .18s ease, box-shadow .18s ease; margin-bottom:10px;
+    }
+    .task-card:hover{ transform: translateY(-2px); box-shadow: 0 12px 26px rgba(13,110,253,.22); }
+    [data-bs-theme="dark"] .task-card{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.06));
+      border-color: rgba(255,255,255,.12);
+    }
+    .task-title.done{ text-decoration: line-through; opacity:.65 }
+
+    /* Masonry */
+    .masonry{ column-count: 1; column-gap: 14px; }
+    @media (min-width: 576px){ .masonry{ column-count: 2; } }
+    @media (min-width: 992px){ .masonry{ column-count: 3; } }
+    .masonry .h-card{
+      display:inline-block; width:100%;
+      margin:0 0 14px; border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(0,0,0,.06); background: var(--card-bg); box-shadow: var(--shadow-soft);
+    }
+    [data-bs-theme="dark"] .masonry .h-card{ border-color: rgba(255,255,255,.12); }
+    .h-card .h-body{ padding: 12px; }
+    .h-quote{ font-style: italic; }
+    .h-doc{ font-size: 12px; color: var(--bs-secondary-color); }
+
+    /* Tag cloud */
+    .tag-cloud{ display:flex; flex-wrap:wrap; gap:8px; }
+    .tag-chip{ border:1px solid rgba(0,0,0,.08); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; }
+    [data-bs-theme="dark"] .tag-chip{ border-color: rgba(255,255,255,.14); }
+
+    /* Fade-in */
+    .fade-in{ opacity:0; transform: translateY(6px); transition: opacity .45s ease, transform .45s ease; }
+    .fade-in.show{ opacity:1; transform: translateY(0); }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <!-- Improved: collapsible navbar to prevent wrapping on mobile -->
-    <nav class="navbar navbar-expand-md navbar-light bg-light border-bottom">
-      <div class="container-fluid">
-        <a class="navbar-brand brand" href="app.html">Study Companion</a>
 
-        <div class="d-none d-md-flex align-items-center gap-2">
-          <a class="btn btn-outline-primary btn-sm" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
-          <a class="btn btn-outline-primary btn-sm" href="meetings.html" title="Meetings"><i class="fa-solid fa-calendar"></i></a>
-          <a class="btn btn-outline-primary btn-sm" href="convention.html" title="Convention"><i class="fa-solid fa-users"></i></a>
-        </div>
+  <!-- Topbar -->
+  <nav class="navbar nav-3d sticky-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings"><i class="fa-solid fa-gear"></i></a>
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme"><i class="fa-solid fa-moon"></i></button>
+      </div>
+      <div class="fw-bold">Study Companion</div>
+      <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
+        <a class="btn btn-sm btn-outline-primary" href="meetings.html" title="Meetings"><i class="fa-solid fa-calendar"></i></a>
+      </div>
+    </div>
+  </nav>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topbar">
-          <span class="navbar-toggler-icon"></span>
-        </button>
+  <main class="container py-3">
 
-        <div class="collapse navbar-collapse justify-content-end" id="topbar">
-          <div class="right-actions d-flex align-items-center mt-2 mt-md-0">
-            <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
-            <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
-            <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme"><i class="fa-solid fa-moon"></i></button>
-            <a class="btn btn-sm btn-outline-secondary" id="open-settings" href="settings.html" title="Settings"><i class="fa-solid fa-gear"></i></a>
-          </div>
-
-          <!-- Small-screen nav actions -->
-          <div class="d-md-none d-flex align-items-center gap-2 mt-2">
-            <a class="btn btn-outline-primary btn-sm" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
-            <a class="btn btn-outline-primary btn-sm" href="meetings.html" title="Meetings"><i class="fa-solid fa-calendar"></i></a>
-            <a class="btn btn-outline-primary btn-sm" href="convention.html" title="Convention"><i class="fa-solid fa-users"></i></a>
-          </div>
+    <!-- Quick Actions -->
+    <section class="panel-3d fade-in mb-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="section-title"><i class="fa-solid fa-rocket me-2"></i>Quick Actions</div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary btn-sm btn-3d" id="qa-continue"><i class="fa-solid fa-forward me-1"></i>Continue</button>
+          <button class="btn btn-outline-primary btn-sm" id="qa-import"><i class="fa-solid fa-upload me-1"></i>Import</button>
+          <a class="btn btn-outline-primary btn-sm" href="meetings.html"><i class="fa-solid fa-pen-to-square me-1"></i>Editor</a>
+          <a class="btn btn-outline-secondary btn-sm" href="notes.html"><i class="fa-regular fa-note-sticky me-1"></i>All Notes</a>
+          <button class="btn btn-outline-secondary btn-sm" id="qa-library"><i class="fa-solid fa-books me-1"></i>Library</button>
         </div>
       </div>
-    </nav>
+    </section>
 
-    <aside class="sidebar p-2">
-      <div class="small text-muted px-2 pt-2">Search</div>
-      <div class="px-2 pb-2">
-        <div class="input-group input-group-sm">
-          <input id="search-input" type="text" class="form-control" placeholder="Search…">
-          <button class="btn btn-outline-secondary" type="button" id="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+    <!-- Study Planner (Kanban) -->
+    <section class="panel-3d fade-in mb-3">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="section-title"><i class="fa-regular fa-calendar-check me-2"></i>Study Planner</div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm btn-3d" data-bs-toggle="modal" data-bs-target="#plannerModal"><i class="fa-solid fa-plus me-1"></i>Add</button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-today">Today</button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-week">This Week</button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-all">All</button>
         </div>
       </div>
+      <div id="planner-kanban" class="kanban">
+        <div class="lane" data-lane="today">
+          <div class="lane-title">Today</div>
+          <div class="lane-body" id="kanban-today"></div>
+        </div>
+        <div class="lane" data-lane="week">
+          <div class="lane-title">This Week</div>
+          <div class="lane-body" id="kanban-week"></div>
+        </div>
+        <div class="lane" data-lane="later">
+          <div class="lane-title">Later</div>
+          <div class="lane-body" id="kanban-later"></div>
+        </div>
+      </div>
+    </section>
 
-      <div class="small text-muted px-2">Favorites</div>
-      <div id="side-favorites" class="small text-muted px-2 pb-2">No favorites yet.</div>
-
-      <div class="small text-muted px-2">Recent</div>
-      <div id="side-recent" class="small text-muted px-2 pb-2">Loading…</div>
-
-      <div class="small text-muted px-2">Pages</div>
-      <div id="side-pages" class="small text-muted px-2">Loading…</div>
-
-      <!-- Smart Folders -->
-      <div class="small text-muted px-2 mt-2">Smart Folders</div>
-      <div id="side-smart" class="small text-muted px-2 pb-2">Loading…</div>
-    </aside>
-
-    <main class="center">
-      <div class="container-fluid py-3">
-        <!-- Hero / Quick actions -->
-        <div class="hero mb-3">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div>
-              <div class="h5 fw-bold mb-1">Welcome back 👋</div>
-              <div class="small text-muted">Capture notes, import materials, and jump into reading.</div>
+    <!-- Upcoming Timeline + Focus Timer + Stats -->
+    <div class="row g-3">
+      <div class="col-12 col-xl-6">
+        <section class="panel-3d fade-in h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="section-title"><i class="fa-regular fa-bell me-2"></i>Upcoming</div>
+            <button class="btn btn-sm btn-outline-primary" id="btn-enable-notifs"><i class="fa-regular fa-circle-check me-1"></i>Enable alerts</button>
+          </div>
+          <div id="upcoming-list" class="small text-muted">Loading…</div>
+        </section>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <section class="panel-3d fade-in h-100">
+          <div class="section-title mb-2"><i class="fa-regular fa-hourglass-half me-2"></i>Focus Timer</div>
+          <div id="ftimer">
+            <div class="display-5 text-center" id="ft-time">25:00</div>
+            <div class="d-flex justify-content-center gap-2 my-2">
+              <button class="btn btn-primary btn-sm" id="ft-start"><i class="fa-solid fa-play"></i></button>
+              <button class="btn btn-outline-secondary btn-sm" id="ft-pause"><i class="fa-solid fa-pause"></i></button>
+              <button class="btn btn-outline-danger btn-sm" id="ft-reset"><i class="fa-solid fa-rotate-left"></i></button>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-primary btn-sm" id="btn-new-page"><i class="fa-solid fa-file-circle-plus me-1"></i>New page</button>
-              <button class="btn btn-outline-primary btn-sm" id="btn-import"><i class="fa-solid fa-upload me-1"></i>Import</button>
-              <button class="btn btn-outline-secondary btn-sm" id="btn-open-library"><i class="fa-solid fa-books me-1"></i>Library</button>
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="pomodoro">Pomodoro</button>
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="short">Short</button>
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="long">Long</button>
             </div>
           </div>
-        </div>
-
-        <!-- Discover carousel (engaging visuals; all inline SVG) -->
-        <div id="discover" class="mb-3">
-          <div id="discCarousel" class="carousel slide" data-bs-ride="carousel">
-            <div class="carousel-inner">
-              <div class="carousel-item active">
-                <div class="feat-card">
-                  <div class="feat-img">
-                    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0" stop-color="#e9f1ff"/>
-                          <stop offset="1" stop-color="#f9fbff"/>
-                        </linearGradient>
-                      </defs>
-                      <rect width="800" height="420" fill="url(#g1)"/>
-                      <circle cx="120" cy="120" r="60" fill="#136FF2" opacity="0.18"/>
-                      <text x="40" y="320" fill="#0d6efd" font-size="28" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial">Tip: Import EPUB / PDF / DOCX and add highlights.</text>
-                    </svg>
-                  </div>
-                  <div class="p-3 d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Bring your library</div>
-                    <button class="btn btn-sm btn-primary" id="disc-import">Import now</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="carousel-item">
-                <div class="feat-card">
-                  <div class="feat-img">
-                    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="800" height="420" fill="#f6fff6"/>
-                      <rect x="60" y="70" width="240" height="280" rx="16" fill="#cfead1"/>
-                      <rect x="320" y="70" width="420" height="40" rx="8" fill="#d7efd9"/>
-                      <rect x="320" y="120" width="420" height="40" rx="8" fill="#d7efd9"/>
-                      <rect x="320" y="170" width="380" height="40" rx="8" fill="#d7efd9"/>
-                      <text x="60" y="360" fill="#2e7d32" font-size="26" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial">Use Smart Folders to save filters/searches.</text>
-                    </svg>
-                  </div>
-                  <div class="p-3 d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Find things fast</div>
-                    <a class="btn btn-sm btn-outline-success" href="notes.html">Open Notes</a>
-                  </div>
-                </div>
-              </div>
-
-              <div class="carousel-item">
-                <div class="feat-card">
-                  <div class="feat-img">
-                    <svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="800" height="420" fill="#fff7ef"/>
-                      <circle cx="120" cy="110" r="18" fill="#ffa94d"/>
-                      <circle cx="160" cy="110" r="18" fill="#ffd8a8"/>
-                      <circle cx="200" cy="110" r="18" fill="#ffa94d"/>
-                      <text x="60" y="320" fill="#f08c00" font-size="26" font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial">Try Note Templates from the editor’s / menu.</text>
-                    </svg>
-                  </div>
-                  <div class="p-3 d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Templates & Markdown</div>
-                    <a class="btn btn-sm btn-outline-warning" href="meetings.html">Open Editor</a>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button class="carousel-control-prev" type="button" data-bs-target="#discCarousel" data-bs-slide="prev">
-              <span class="carousel-control-prev-icon"></span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#discCarousel" data-bs-slide="next">
-              <span class="carousel-control-next-icon"></span>
-            </button>
-          </div>
-        </div>
-
-
-        <!-- Quick capture -->
-        <div class="glass-card p-3 mb-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="section-title">Quick capture</div>
-            <div class="small text-muted">Save thoughts fast</div>
-          </div>
-          <div class="mt-2">
-            <textarea id="quick-note" class="form-control" rows="3" placeholder="Write a quick note…"></textarea>
-            <div class="d-flex justify-content-end gap-2 mt-2">
-              <button class="btn btn-sm btn-outline-secondary" id="btn-clear-note">Clear</button>
-              <button class="btn btn-sm btn-primary" id="btn-save-note"><i class="fa-solid fa-save me-1"></i>Save</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Continue / Recent -->
-        <div class="row g-3">
-          <div class="col-12 col-xl-7">
-            <div class="glass-card p-3 h-100">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="section-title">Continue reading</div>
-                <button class="btn btn-sm btn-outline-secondary" id="btn-open-library"><i class="fa-solid fa-books"></i> Library</button>
-              </div>
-              <div id="continue-box" class="small text-muted">Loading…</div>
-            </div>
-          </div>
-          <div class="col-12 col-xl-5">
-            <div class="glass-card p-3 h-100">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="section-title">Recent</div>
-                <a class="small" href="notes.html" id="view-all">View all</a>
-              </div>
-              <div id="recent-grid" class="row g-2">Loading…</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Templates gallery: engaging shortcuts -->
-        <div class="glass-card p-3 mt-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="section-title">Templates</div>
-            <a class="small" href="meetings.html">Open editor</a>
-          </div>
-          <div class="row g-2 mt-1">
-            <div class="col-6 col-md-3"><button class="btn w-100 btn-outline-secondary" data-template="outline">Outline</button></div>
-            <div class="col-6 col-md-3"><button class="btn w-100 btn-outline-secondary" data-template="study">Study</button></div>
-            <div class="col-6 col-md-3"><button class="btn w-100 btn-outline-secondary" data-template="sermon">Sermon</button></div>
-            <div class="col-6 col-md-3"><button class="btn w-100 btn-outline-secondary" data-template="meeting">Meeting</button></div>
-          </div>
-        </div>
-
-        <!-- Library preview -->
-        <div class="glass-card p-3 mt-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="section-title">Your library</div>
-            <a class="small" href="#" id="open-lib-mini">Open</a>
-          </div>
-          <div id="library-mini" class="row g-2 mt-1">Loading…</div>
-        </div>
+        </section>
       </div>
-    </main>
-
-    <aside class="rightbar p-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0"><i class="fa-solid fa-sticky-note me-1"></i> Current Book Notes</h6>
-        <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-primary" id="btn-export"><i class="fa-solid fa-download"></i></button>
-        </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <section class="panel-3d fade-in h-100">
+          <div class="section-title mb-2"><i class="fa-solid fa-chart-line me-2"></i>Stats & Streak</div>
+          <div id="stats-box" class="small">Loading…</div>
+        </section>
       </div>
-      <div id="current-book-title" class="text-muted small mb-2"></div>
-      <div id="notes-list">
-        <div class="text-center text-muted py-4">
-          <i class="fa-solid fa-sticky-note fa-2x mb-2"></i>
-          <p>No notes yet. Select text in the book to add highlights and notes.</p>
-        </div>
-      </div>
-    </aside>
-  </div>
-
-  <!-- Offcanvas Library -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="libraryDrawer">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="fa-solid fa-books me-2"></i>Your Library</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
-    <div class="offcanvas-body" id="library-list"><div class="text-muted">Loading…</div></div>
+
+    <!-- Smart Folders + Tag Cloud -->
+    <div class="row g-3 mt-1">
+      <div class="col-12 col-lg-6">
+        <section class="panel-3d fade-in h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="section-title"><i class="fa-regular fa-folder-open me-2"></i>Smart Folders</div>
+            <a class="small" href="notes.html">Open Notes</a>
+          </div>
+          <div id="smart-folders" class="small text-muted">Loading…</div>
+        </section>
+      </div>
+      <div class="col-12 col-lg-6">
+        <section class="panel-3d fade-in h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="section-title"><i class="fa-solid fa-tags me-2"></i>Tags</div>
+            <div class="small text-muted">From recent highlights</div>
+          </div>
+          <div id="tag-cloud" class="tag-cloud small text-muted">Loading…</div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Masonry Highlights -->
+    <section class="panel-3d fade-in my-3">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="section-title"><i class="fa-regular fa-highlighter me-2"></i>Masonry Highlights</div>
+        <div class="small text-muted">Your recent quotes & notes</div>
+      </div>
+      <div id="masonry" class="masonry"></div>
+    </section>
+
+    <!-- Quick Capture -->
+    <section class="panel-3d fade-in mb-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="section-title"><i class="fa-regular fa-note-sticky me-2"></i>Quick Capture</div>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" id="qc-clear">Clear</button>
+          <button class="btn btn-sm btn-primary" id="qc-save"><i class="fa-solid fa-save me-1"></i>Save</button>
+        </div>
+      </div>
+      <textarea id="qc-text" class="form-control mt-2" rows="3" placeholder="Write a quick thought…"></textarea>
+    </section>
+
+  </main>
+
+  <!-- Add Planner Modal -->
+  <div class="modal fade" id="plannerModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Add Planner Item</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Title</label>
+              <input id="pl-title" class="form-control" placeholder="e.g., Study Chapter 3">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Date</label>
+              <input id="pl-date" type="date" class="form-control">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Time</label>
+              <input id="pl-time" type="time" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Type</label>
+              <select id="pl-type" class="form-select">
+                <option value="study">Study</option>
+                <option value="meeting">Meeting</option>
+                <option value="review">Review</option>
+                <option value="task">Task</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input id="pl-remind" class="form-check-input" type="checkbox" checked>
+                <label class="form-check-label" for="pl-remind">Remind me (day-before & at time)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="pl-save" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Toast -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
     <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
-        <div class="toast-body" id="app-toast-body">Action completed.</div>
+        <div class="toast-body" id="app-toast-body">Saved.</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
+  <!-- JS libs -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- App code -->
+  <!-- Your core app (kept for ecosystem functions like import, library, etc.) -->
   <script type="module" src="js/app.js"></script>
 
-  <!-- Safe bridges so inline clicks never crash even if app not ready -->
-  <script>
-    (function(){
-      const call=(fn,...a)=>window.app&&typeof window.app[fn]==='function'?window.app[fn](...a):void 0;
-      window.openDoc=(id)=>{call('openDoc',id)};
-      window.importMenu=()=>{call('importMenu')};
-      window.exportStudy=()=>{call('exportStudy')};
-      window.createNewTextPage=()=>{call('createNewTextPage')};
-      window.saveQuickNote=()=>{call('saveQuickNote')};
-      window.openLibrary=()=>{call('openLibraryDrawer')};
-      window.searchAll=term=>{call('openNotesWithQuery', term)};
-    })();
-  </script>
-
-  <!-- Service Worker registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try { await navigator.serviceWorker.register('sw.js', { scope: './' }); }
-        catch (e) { console.warn('SW registration failed', e); }
-      });
-    }
-  </script>
-
-  <!-- Smart Folders + Fallback UI wiring (works even if app.js isn't ready yet) -->
-  <script type="module">
-    import * as SS from './js/search/savedSearches.js';
-    import { storage } from './js/storage.js';
-
-    const $ = s => document.querySelector(s);
-    const toast = (msg, type='primary')=>{
-      const el = document.getElementById('app-toast');
-      const body = document.getElementById('app-toast-body');
-      if (!el || !body) return;
-      body.textContent = msg;
-      el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-      new bootstrap.Toast(el, {autohide:true, delay:1800}).show();
-    };
-
-    // ---- Fallback action wiring (still calls your app.* if available)
-    $('#btn-import')?.addEventListener('click', ()=> (window.importMenu?.()) );
-    $('#disc-import')?.addEventListener('click', ()=> (window.importMenu?.()) );
-    $('#btn-new-page')?.addEventListener('click', ()=> (window.createNewTextPage?.()) );
-    $('#btn-open-library')?.addEventListener('click', ()=> (window.openLibrary?.()) );
-    $('#open-lib-mini')?.addEventListener('click', ()=> (window.openLibrary?.()) );
-    $('#btn-clear-note')?.addEventListener('click', ()=> { const t=$('#quick-note'); if(t) t.value=''; });
-    $('#btn-save-note')?.addEventListener('click', ()=> (window.saveQuickNote?.()) );
-    $('#search-btn')?.addEventListener('click', ()=>{
-      const term = ($('#search-input')?.value||'').trim();
-      if (!term) return;
-      if (window.searchAll) window.searchAll(term);
-      else location.href = `notes.html?q=${encodeURIComponent(term)}`;
-    });
-
-    // Template buttons → open editor; keep it simple
-document.querySelectorAll('[data-template]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const t = btn.getAttribute('data-template');
-    if (window.app?.createFromTemplate) window.app.createFromTemplate(t);
-    else location.href = `meetings.html#template=${encodeURIComponent(t)}`;
-  });
-});
-
-
-    // Smart Folders in sidebar
-    const smartBox = document.getElementById('side-smart');
-    const esc = s => (s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
-    async function renderSmart(){
-      try{
-        const list = await SS.list();
-        if (!list.length){ smartBox.innerHTML = `<div class="text-muted">No smart folders yet.</div>`; return; }
-        smartBox.innerHTML = list.map(i=>`
-          <div class="sf-item">
-            <div class="text-truncate" title="${esc(i.title)}">${esc(i.title)}</div>
-            <a class="btn btn-sm btn-outline-primary" href="notes.html?smart=${encodeURIComponent(i.id)}" title="Open in Notes"><i class="fa-regular fa-folder-open"></i></a>
-          </div>`).join('');
-      }catch(e){ smartBox.innerHTML = `<div class="text-danger">Failed to load</div>`; }
-    }
-    renderSmart();
-
-    // Light fallback content for Continue / Recent / Library (if app.js hasn’t filled them)
-    async function fillHome(){
-      try{ await storage.init?.(); }catch{}
-      const docs = await (storage.getDocuments?.() || []);
-      const active = (docs||[]).filter(d=>!d.deletedAt);
-
-      // Continue
-      const cont = [...active].sort((a,b)=> new Date(b.lastOpened||0) - new Date(a.lastOpened||0))[0];
-      const contBox = $('#continue-box');
-      if (contBox && contBox.textContent.includes('Loading')){
-        contBox.innerHTML = cont
-          ? `<div class="d-flex align-items-center justify-content-between border rounded p-2 shadow-sm">
-               <div class="text-truncate"><i class="fa-solid fa-book-open text-muted me-2"></i>${esc(cont.title||'(Untitled)')}</div>
-               <button class="btn btn-sm btn-outline-primary" onclick="openDoc('${cont.id}')">Open</button>
-             </div>`
-          : `<div class="text-muted">Nothing yet. Import a book to get started.</div>`;
-      }
-
-      // Recent grid
-      const recent = [...active].sort((a,b)=>
-        new Date(b.updatedAt||b.createdAt||0)-new Date(a.updatedAt||a.createdAt||0)
-      ).slice(0,6);
-      const grid = document.getElementById('recent-grid');
-      if (grid && grid.textContent.includes('Loading')){
-        grid.innerHTML = recent.length ? recent.map(d=>`
-          <div class="col-6">
-            <div class="border rounded p-2 h-100">
-              <div class="small text-truncate fw-semibold">${esc(d.title||'(Untitled)')}</div>
-              <div class="text-muted small">${(d.type||'').toUpperCase()}</div>
-              <button class="btn btn-sm btn-outline-primary mt-2" onclick="openDoc('${d.id}')">Open</button>
-            </div>
-          </div>`).join('') : `<div class="col-12 text-muted">No recent items.</div>`;
-      }
-
-      // Library mini
-      const mini = document.getElementById('library-mini');
-      if (mini && mini.textContent.includes('Loading')){
-        const few = active.slice(0,8);
-        mini.innerHTML = few.length ? few.map(d=>`
-          <div class="col-6 col-md-3">
-            <div class="border rounded p-2 h-100">
-              <div class="small text-truncate">${esc(d.title||'(Untitled)')}</div>
-              <div class="text-muted small">${(d.type||'').toUpperCase()}</div>
-            </div>
-          </div>`).join('') : `<div class="col-12 text-muted">Your library is empty.</div>`;
-      }
-    }
-    // Give app.js a moment to render; then backfill if still empty
-    setTimeout(fillHome, 350);
-  </script>
+  <!-- New modules -->
+  <script type="module" src="js/planner.js"></script>
+  <script type="module" src="js/focusTimer.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>

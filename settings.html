@@ -2,37 +2,51 @@
 <html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Settings — Study Companion</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- App styles -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#136FF2">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="apple-touch-icon" href="logo.png">
-
-  <meta http-equiv="Content-Security-Policy"
-  content="
-    default-src 'self';
-    img-src 'self' data: blob:;
-    font-src 'self' data: https://cdnjs.cloudflare.com;
-    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
-    connect-src 'self' blob:;
-    worker-src 'self' blob: https://cdnjs.cloudflare.com;
-    object-src 'none';
-    base-uri 'self';
-    upgrade-insecure-requests;
-  ">
-
+  <link rel="apple-touch-icon" href="icons/logo.png">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/dark.css">
 
+  <!-- CSP: allow CDNs, HTTPS endpoints for WebDAV -->
+  <meta http-equiv="Content-Security-Policy"
+    content="
+      default-src 'self';
+      img-src 'self' data: blob:;
+      font-src 'self' data: https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+      style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+      script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+      connect-src 'self' https: blob:;
+      worker-src 'self' blob: https://cdnjs.cloudflare.com;
+      object-src 'none';
+      base-uri 'self';
+      upgrade-insecure-requests;
+    ">
+
   <style>
     .set-card{ border:1px solid #e9ecef; border-radius:12px; background:var(--bs-body-bg); }
+    .overlay-lock {
+      position:fixed; inset:0; z-index:20000;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.5); backdrop-filter: blur(6px);
+    }
+    .overlay-lock .panel{
+      width:min(420px,92vw); background:var(--bs-body-bg);
+      border-radius:12px; padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
   </style>
 </head>
 <body>
@@ -55,6 +69,7 @@
   </nav>
 
   <main class="container py-3">
+
     <!-- App -->
     <div class="set-card p-3 mb-3">
       <h5 class="mb-3"><i class="fa-solid fa-gear me-2"></i>App</h5>
@@ -81,100 +96,104 @@
         </div>
       </div>
       <div class="mt-3">
-        <button class="btn btn-primary" id="btn-save-settings"><i class="fa-solid fa-floppy-disk me-1"></i> Save Settings</button>
+        <button class="btn btn-primary" id="btn-save-settings">
+          <i class="fa-solid fa-floppy-disk me-1"></i> Save Settings
+        </button>
       </div>
     </div>
 
     <!-- Security -->
-    <!-- Security -->
-<div class="set-card p-3 mb-3">
-  <h5 class="mb-2"><i class="fa-solid fa-lock me-2"></i>Security</h5>
+    <div class="set-card p-3 mb-3">
+      <h5 class="mb-2"><i class="fa-solid fa-lock me-2"></i>Security</h5>
 
-  <div class="row g-3">
-    <div class="col-12 col-lg-6">
-      <h6 class="mb-2">App Lock</h6>
-      <div class="row g-2">
-        <div class="col-6">
-          <label class="form-label">New PIN</label>
-          <input id="sec-pin1" type="password" inputmode="numeric" class="form-control" placeholder="1234">
-        </div>
-        <div class="col-6">
-          <label class="form-label">Confirm PIN</label>
-          <input id="sec-pin2" type="password" inputmode="numeric" class="form-control" placeholder="1234">
-        </div>
-        <div class="col-6">
-          <label class="form-label">Idle Lock (minutes)</label>
-          <input id="sec-idle" type="number" min="1" class="form-control" value="15">
-        </div>
-        <div class="col-6 d-flex align-items-end">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="sec-bio">
-            <label class="form-check-label" for="sec-bio">Allow biometric (WebAuthn)</label>
+      <div class="row g-3">
+        <div class="col-12 col-lg-6">
+          <h6 class="mb-2">App Lock</h6>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">New PIN</label>
+              <input id="sec-pin1" type="password" inputmode="numeric" class="form-control" placeholder="1234">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Confirm PIN</label>
+              <input id="sec-pin2" type="password" inputmode="numeric" class="form-control" placeholder="1234">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Idle Lock (minutes)</label>
+              <input id="sec-idle" type="number" min="1" class="form-control" value="15">
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="sec-bio">
+                <label class="form-check-label" for="sec-bio">Allow biometric (WebAuthn)</label>
+              </div>
+            </div>
           </div>
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" id="sec-enable"><i class="fa-solid fa-unlock-keyhole me-1"></i>Enable Lock</button>
+            <button class="btn btn-outline-danger" id="sec-disable"><i class="fa-solid fa-ban me-1"></i>Disable Lock</button>
+            <button class="btn btn-outline-secondary" id="sec-lock-now"><i class="fa-solid fa-lock me-1"></i>Lock Now</button>
+          </div>
+          <div class="form-text mt-1">When enabled, the app locks after inactivity and on next open. “Lock Now” locks immediately.</div>
         </div>
-      </div>
-      <div class="mt-2 d-flex gap-2">
-        <button class="btn btn-primary" id="sec-enable"><i class="fa-solid fa-unlock-keyhole me-1"></i>Enable Lock</button>
-        <button class="btn btn-outline-danger" id="sec-disable"><i class="fa-solid fa-ban me-1"></i>Disable Lock</button>
+
+        <div class="col-12 col-lg-6">
+          <h6 class="mb-2">Encryption at Rest</h6>
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Passphrase</label>
+              <input id="enc-pass" type="password" class="form-control" placeholder="********">
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="enc-remember">
+                <label class="form-check-label" for="enc-remember">Remember this session</label>
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" id="enc-enable"><i class="fa-solid fa-shield-halved me-1"></i>Enable Encryption</button>
+            <button class="btn btn-outline-secondary" id="enc-resume"><i class="fa-solid fa-key me-1"></i>Unlock Session</button>
+            <button class="btn btn-outline-danger" id="enc-disable"><i class="fa-solid fa-xmark me-1"></i>Disable</button>
+          </div>
+          <div class="form-text mt-1">Encrypted data uses AES-GCM; passphrase is not stored.</div>
+        </div>
       </div>
     </div>
 
-    <div class="col-12 col-lg-6">
-      <h6 class="mb-2">Encryption at Rest</h6>
+    <!-- Sync (WebDAV) -->
+    <div class="set-card p-3 mb-3">
+      <h5 class="mb-2"><i class="fa-solid fa-arrows-rotate me-2"></i>Sync (Manual · WebDAV)</h5>
       <div class="row g-2">
-        <div class="col-12">
-          <label class="form-label">Passphrase</label>
-          <input id="enc-pass" type="password" class="form-control" placeholder="********">
+        <div class="col-md-6">
+          <label class="form-label">Endpoint (base URL)</label>
+          <input id="dav-endpoint" class="form-control" placeholder="https://example.com/dav/">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Username</label>
+          <input id="dav-user" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Password</label>
+          <input id="dav-pass" type="password" class="form-control">
         </div>
         <div class="col-12">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="enc-remember">
-            <label class="form-check-label" for="enc-remember">Remember this session</label>
-          </div>
+          <label class="form-label">Remote Path</label>
+          <input id="dav-path" class="form-control" placeholder="/StudyCompanion/bundle.json">
         </div>
       </div>
       <div class="mt-2 d-flex flex-wrap gap-2">
-        <button class="btn btn-primary" id="enc-enable"><i class="fa-solid fa-shield-halved me-1"></i>Enable Encryption</button>
-        <button class="btn btn-outline-secondary" id="enc-resume"><i class="fa-solid fa-key me-1"></i>Unlock Session</button>
-        <button class="btn btn-outline-danger" id="enc-disable"><i class="fa-solid fa-xmark me-1"></i>Disable</button>
+        <button class="btn btn-outline-secondary" id="dav-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+        <button class="btn btn-outline-secondary" id="dav-check"><i class="fa-solid fa-list-check me-1"></i>Check Remote</button>
+        <button class="btn btn-outline-primary" id="dav-download"><i class="fa-solid fa-download me-1"></i>Download</button>
+        <button class="btn btn-primary" id="dav-upload"><i class="fa-solid fa-upload me-1"></i>Upload</button>
       </div>
-      <div class="form-text mt-1">Encrypted data uses AES-GCM; passphrase is not stored.</div>
+      <div class="form-text mt-1">Sync pushes/pulls your JSON bundle on demand. Offline use is never blocked.</div>
     </div>
-  </div>
-</div>
-
-<!-- Sync -->
-<div class="set-card p-3 mb-3">
-  <h5 class="mb-2"><i class="fa-solid fa-arrows-rotate me-2"></i>Sync (Manual · WebDAV)</h5>
-  <div class="row g-2">
-    <div class="col-md-6">
-      <label class="form-label">Endpoint (base URL)</label>
-      <input id="dav-endpoint" class="form-control" placeholder="https://example.com/dav/">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Username</label>
-      <input id="dav-user" class="form-control">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Password</label>
-      <input id="dav-pass" type="password" class="form-control">
-    </div>
-    <div class="col-12">
-      <label class="form-label">Remote Path</label>
-      <input id="dav-path" class="form-control" placeholder="/StudyCompanion/bundle.json">
-    </div>
-  </div>
-  <div class="mt-2 d-flex flex-wrap gap-2">
-    <button class="btn btn-outline-secondary" id="dav-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-    <button class="btn btn-outline-secondary" id="dav-check"><i class="fa-solid fa-list-check me-1"></i>Check Remote</button>
-    <button class="btn btn-outline-primary" id="dav-download"><i class="fa-solid fa-download me-1"></i>Download</button>
-    <button class="btn btn-primary" id="dav-upload"><i class="fa-solid fa-upload me-1"></i>Upload</button>
-  </div>
-  <div class="form-text mt-1">Sync pushes/pulls your JSON bundle on demand. Offline use is never blocked.</div>
-</div>
 
   </main>
 
+  <!-- Toast -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
     <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
@@ -184,54 +203,41 @@
     </div>
   </div>
 
+  <!-- Vendor core -->
   <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- Global app (theme/lang helpers etc.) -->
   <script type="module" src="js/app.js"></script>
+
+  <!-- Page logic -->
   <script type="module">
     import { storage } from './js/storage.js';
-    import { schedule } from './js/schedule.js'; // if you use it elsewhere
-    import { FLAGS } from './js/flags.js';
-    import { setupPIN } from './js/security/lock.js';
-    import { makeBundle } from './js/sync/bundle.js';
-    import { connect, uploadBundle, downloadBundle } from './js/sync/webdav.js';
-    import { enableEncryption, disableEncryption, isPatched } from './js/security/patch-localforage.js';
     import { lock } from './js/security/lock.js';
     import * as cryptoStore from './js/security/cryptoStore.js';
-    import * as webdav from './js/sync/webdav.js';
-
+    import * as webdav from './js/sync/webdav.js'; // namespace import avoids named-export mismatches
 
     const $ = (s, r=document) => r.querySelector(s);
     const toast = (msg, type='primary') => {
       const el = $('#app-toast'), body = $('#app-toast-body');
-      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-      new bootstrap.Toast(el, {autohide:true, delay:1600}).show();
+      if (!el || !body) { alert(msg); return; }
+      body.textContent = msg;
+      el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, { autohide:true, delay:1600 }).show();
     };
 
+    // ---------------- App settings ----------------
     const langSel = $('#settings-language');
     const themeSel = $('#settings-theme');
     const pwaChk  = $('#settings-pwa');
 
-    const pinNew  = $('#pin-new');
-    const pinIdle = $('#pin-idle');
-    const encChk  = $('#enable-encryption');
-    const encWrap = $('#enc-wrap');
-    const encPass = $('#enc-pass');
-
-    const davUrl  = $('#dav-url'); const davUser = $('#dav-user'); const davPass = $('#dav-pass');
-    const syncStatus = $('#sync-status');
-
     async function loadSettingsIntoForm(){
-      await storage.init?.();
+      try { await storage.init?.(); } catch {}
       const s = await (storage.getSettings?.() || {});
-      langSel.value  = s.lang || (localStorage.getItem('app_lang') || 'en');
+      langSel.value  = s.lang  || (localStorage.getItem('app_lang')  || 'en');
       themeSel.value = s.theme || (localStorage.getItem('app_theme') || 'light');
       pwaChk.checked = !!s.pwaEnabled;
-      // idle seconds if saved
-      const lockCfg = await localforage.getItem('lock_settings');
-      pinIdle.value = (lockCfg?.idleSec || 180);
-      // encryption visible
-      encWrap.style.display = encChk.checked ? 'block' : 'none';
+      document.documentElement.setAttribute('data-bs-theme', themeSel.value);
     }
 
     async function saveSettings(){
@@ -243,65 +249,207 @@
         pwaEnabled: !!pwaChk.checked
       };
       await storage.saveSettings?.(s);
+      try {
+        localStorage.setItem('app_lang', s.lang);
+        localStorage.setItem('app_theme', s.theme);
+      } catch {}
       document.documentElement.setAttribute('data-bs-theme', s.theme);
-      try { localStorage.setItem('app_theme', s.theme); localStorage.setItem('app_lang', s.lang); } catch {}
-      toast('Settings saved','success');
+      toast('Settings saved', 'success');
+    }
+    $('#btn-save-settings')?.addEventListener('click', saveSettings);
+
+    // quick top buttons
+    document.getElementById('lang-en')?.addEventListener('click', ()=>{ langSel.value='en'; saveSettings(); });
+    document.getElementById('lang-es')?.addEventListener('click', ()=>{ langSel.value='es'; saveSettings(); });
+    document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
+      themeSel.value = (themeSel.value === 'light') ? 'dark' : 'light';
+      saveSettings();
+    });
+
+    // ---------------- App Lock ----------------
+    const pin1 = $('#sec-pin1');
+    const pin2 = $('#sec-pin2');
+    const idle = $('#sec-idle');
+    const bio  = $('#sec-bio');
+
+    // Enable lock with PIN + options
+    $('#sec-enable')?.addEventListener('click', async ()=>{
+      const p1 = (pin1.value||'').trim();
+      const p2 = (pin2.value||'').trim();
+      const idleMin = Math.max(1, parseInt(idle.value||'15', 10));
+      if (!p1 || p1 !== p2) { toast('PIN mismatch', 'danger'); return; }
+      try {
+        await lock.setupPin(p1, !!bio.checked, idleMin);    // stores hash+salt+cfg.enabled=true
+        await lock.init({ idleMinutes: idleMin });          // arm idle timer on this page too
+        toast('App Lock enabled', 'success');
+        pin1.value=''; pin2.value='';
+      } catch(e){ console.error(e); toast('Failed to enable lock','danger'); }
+    });
+
+    // Disable lock (keeps PIN stored only if your lock.js does; you can add a “Clear PIN” flow in overlay)
+    $('#sec-disable')?.addEventListener('click', async ()=>{
+      try {
+        await lock.disable();
+        toast('App Lock disabled', 'secondary');
+      } catch(e){ console.error(e); toast('Failed to disable lock','danger'); }
+    });
+
+    // “Lock Now”: immediate blocking overlay + set a flag so other pages will require unlock too
+    $('#sec-lock-now')?.addEventListener('click', async ()=>{
+      try {
+        // Ensure lock feature is considered enabled globally
+        const cfg = (await localforage.getItem('app_lock_cfg_v1')) || {};
+        cfg.enabled = true;
+        await localforage.setItem('app_lock_cfg_v1', cfg);
+        await localforage.setItem('app_lock_force_v1', { mustUnlock: true, at: Date.now() });
+
+        // Try to show your module’s overlay if available (future-proof)
+        if (typeof lock.lockNow === 'function') {
+          await lock.lockNow();
+          return;
+        }
+        // Fallback: local, minimal overlay that validates the same stored PIN
+        showImmediateLockOverlay();
+      } catch(e){ console.error(e); toast('Failed to lock','danger'); }
+    });
+
+    // Local immediate overlay (fallback) — verifies PIN or WebAuthn, then dismisses.
+    async function showImmediateLockOverlay(){
+      const wrap = document.createElement('div');
+      wrap.className = 'overlay-lock';
+      wrap.innerHTML = `
+        <div class="panel">
+          <h5 class="mb-2">App Locked</h5>
+          <div class="small text-muted mb-2">Enter PIN to unlock.</div>
+          <div class="input-group mb-2">
+            <input id="ol-pin" type="password" inputmode="numeric" class="form-control" placeholder="PIN">
+            <button id="ol-sub" class="btn btn-primary">Unlock</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="ol-bio" class="btn btn-outline-secondary btn-sm" style="display:none;">Use biometric</button>
+            <button id="ol-cancel" class="btn btn-outline-danger btn-sm">Cancel</button>
+          </div>
+          <div id="ol-msg" class="small text-danger mt-2"></div>
+        </div>`;
+      document.body.appendChild(wrap);
+      document.body.style.overflow = 'hidden';
+
+      const $ol = s => wrap.querySelector(s);
+      const msg = $ol('#ol-msg');
+
+      // Biometrics available?
+      if (window.PublicKeyCredential) $ol('#ol-bio').style.display = 'inline-block';
+
+      $ol('#ol-sub').onclick = async ()=>{
+        const pin = $ol('#ol-pin').value || '';
+        const ok = await verifyPinAgainstStore(pin);
+        if (!ok) { msg.textContent = 'Incorrect PIN'; return; }
+        await localforage.setItem('app_lock_force_v1', { mustUnlock:false, at: Date.now() });
+        cleanupOverlay();
+      };
+      $ol('#ol-bio').onclick = async ()=>{
+        try{
+          await navigator.credentials.get({ publicKey:{ challenge:new Uint8Array(16), userVerification:'preferred' }});
+          await localforage.setItem('app_lock_force_v1', { mustUnlock:false, at: Date.now() });
+          cleanupOverlay();
+        }catch(e){ msg.textContent = 'Biometric failed'; }
+      };
+      $ol('#ol-cancel').onclick = ()=> cleanupOverlay();
+
+      function cleanupOverlay(){
+        document.body.style.overflow = '';
+        wrap.remove();
+      }
     }
 
-    // PIN setup
-    $('#btn-set-pin').onclick = async ()=>{
-      const pin = (pinNew.value||'').trim();
-      if (!pin) { alert('Enter a PIN'); return; }
-      await setupPIN(pin);
-      // store idleSec
-      const L = await localforage.getItem('lock_settings');
-      L.idleSec = Math.max(30, Number(pinIdle.value||180));
-      await localforage.setItem('lock_settings', L);
-      toast('PIN set','success'); pinNew.value='';
-    };
+    async function verifyPinAgainstStore(pin=''){
+      try {
+        const salt = await localforage.getItem('app_pin_salt_v1');
+        const saved= await localforage.getItem('app_pin_hash_v1');
+        if (!salt || !saved) return false;
+        const hash = await sha256(pin + ':' + salt);
+        return hash === saved;
+      } catch { return false; }
+    }
+    async function sha256(s){
+      const data = new TextEncoder().encode(s);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(hash)));
+    }
 
-    encChk.addEventListener('change', ()=> encWrap.style.display = encChk.checked ? 'block' : 'none');
-    $('#btn-enable-enc').onclick = async ()=>{
-      if (!FLAGS.encryption){ alert('Enable encryption flag in /js/flags.js first.'); return; }
-      const pass = encPass.value || '';
-      if (!pass) { alert('Enter a passphrase'); return; }
-      const saltHex = await enableEncryption(pass);
-      const s = await (storage.getSettings?.() || {}); s.new = s.new || {}; s.new.security = s.new.security || {};
-      s.new.security.encrypted = true; s.new.security.saltHex = saltHex;
-      await storage.saveSettings?.(s);
-      toast('Encryption enabled. Reload recommended.','success');
-    };
-    $('#btn-disable-enc').onclick = async ()=>{
-      disableEncryption();
-      const s = await (storage.getSettings?.() || {}); s.new = s.new || {}; s.new.security = s.new.security || {};
-      s.new.security.encrypted = false;
-      await storage.saveSettings?.(s);
-      toast('Encryption disabled','secondary');
-    };
+    // ---------------- Encryption at Rest ----------------
+    document.getElementById('enc-enable')?.addEventListener('click', async ()=>{
+      const pass = document.getElementById('enc-pass').value;
+      const remember = !!document.getElementById('enc-remember').checked;
+      if (!pass) { toast('Enter passphrase','danger'); return; }
+      try {
+        await cryptoStore.enable(pass, remember);
+        window.FEATURE_ENCRYPTION = true;
+        toast('Encryption enabled','success');
+      } catch(e){ console.error(e); toast('Enable failed','danger'); }
+    });
 
-    // Sync
-    $('#btn-push').onclick = async ()=>{
-      try{
-        if (!FLAGS.sync){ alert('Enable sync flag in /js/flags.js first.'); return; }
-        const conn = connect({ url: davUrl.value, username: davUser.value, password: davPass.value });
-        const bundle = await makeBundle(storage);
-        await uploadBundle(conn, bundle);
-        syncStatus.textContent = 'Pushed successfully at ' + new Date().toLocaleTimeString();
-        toast('Pushed','success');
-      }catch(e){ console.error(e); toast('Push failed','danger'); }
-    };
-    $('#btn-pull').onclick = async ()=>{
-      try{
-        if (!FLAGS.sync){ alert('Enable sync flag in /js/flags.js first.'); return; }
-        const conn = connect({ url: davUrl.value, username: davUser.value, password: davPass.value });
-        const remote = await downloadBundle(conn);
-        // Simple preview
-        syncStatus.innerHTML = `
-          <div>Remote version: ${remote.version}</div>
-          <div>Docs: ${remote.library?.docs?.length||0}, Annotations: ${remote.notes?.annotations?.length||0}</div>
-          <button class="btn btn-sm btn-primary mt-1" id="btn-apply-pull">Apply</button>`;
-        document.getElementById('btn-apply-pull').onclick = async ()=>{
-          // naive apply: overwrite (you can implement a 2-way merge)
+    document.getElementById('enc-resume')?.addEventListener('click', async ()=>{
+      const pass = document.getElementById('enc-pass').value;
+      if (!pass) { toast('Enter passphrase','danger'); return; }
+      try {
+        const ok = await cryptoStore.resume(pass);
+        if (!ok) { toast('No encrypted data or wrong passphrase','danger'); return; }
+        window.FEATURE_ENCRYPTION = true;
+        toast('Session unlocked','success');
+      } catch(e){ console.error(e); toast('Unlock failed','danger'); }
+    });
+
+    document.getElementById('enc-disable')?.addEventListener('click', async ()=>{
+      try {
+        await cryptoStore.disable();
+        window.FEATURE_ENCRYPTION = false;
+        toast('Encryption disabled','secondary');
+      } catch(e){ console.error(e); toast('Disable failed','danger'); }
+    });
+
+    // ---------------- Sync (WebDAV) ----------------
+    async function loadDavForm(){
+      const cfg = await webdav.loadConfig?.() || {};
+      $('#dav-endpoint').value = cfg.endpoint || '';
+      $('#dav-user').value     = cfg.username || '';
+      $('#dav-pass').value     = cfg.password || '';
+      $('#dav-path').value     = cfg.remotePath || '/StudyCompanion/bundle.json';
+    }
+
+    $('#dav-save')?.addEventListener('click', async ()=>{
+      const cfg = {
+        endpoint: $('#dav-endpoint').value.trim(),
+        username: $('#dav-user').value.trim(),
+        password: $('#dav-pass').value,
+        remotePath: $('#dav-path').value.trim() || '/StudyCompanion/bundle.json'
+      };
+      await webdav.saveConfig?.(cfg);
+      toast('Sync settings saved','success');
+    });
+
+    $('#dav-check')?.addEventListener('click', async ()=>{
+      try {
+        const r = await webdav.listRemote?.();
+        toast(r?.exists ? `Remote exists${r.etag ? ' (ETag '+r.etag+')' : ''}` : 'Not found','secondary');
+      } catch(e){ console.error(e); toast('Check failed','danger'); }
+    });
+
+    $('#dav-upload')?.addEventListener('click', async ()=>{
+      try {
+        const bundle = await (storage.exportBundle?.() || { version:'2.0', exportedAt: new Date().toISOString() });
+        await webdav.uploadBundle?.(null, bundle); // null => use saved config
+        toast('Uploaded','success');
+      } catch(e){ console.error(e); toast('Upload failed','danger'); }
+    });
+
+    $('#dav-download')?.addEventListener('click', async ()=>{
+      try {
+        const remote = await webdav.downloadBundle?.();
+        if (storage.importBundle) {
+          await storage.importBundle(remote);
+        } else {
+          // fallback: apply common buckets
           await storage.setDocuments?.(remote.library?.docs || []);
           await storage.setFavorites?.(remote.library?.favorites || []);
           await storage.saveAllAnnotations?.(remote.notes?.annotations || []);
@@ -309,104 +457,18 @@
           await storage.saveSchedule?.('midweek', remote.meetings?.schedules?.midweek || {});
           await storage.saveSchedule?.('weekend', remote.meetings?.schedules?.weekend || {});
           await storage.saveSettings?.(remote.settings || {});
-          toast('Pulled','success');
-        };
-      }catch(e){ console.error(e); toast('Pull failed','danger'); }
-    };
+        }
+        toast('Downloaded & applied','success');
+      } catch(e){ console.error(e); toast('Download failed','danger'); }
+    });
 
-    $('#btn-save-settings').onclick = saveSettings;
-
+    // ---------------- Boot ----------------
     (async ()=>{
       try { await storage.init?.(); } catch {}
-      try { await schedule.init?.(); } catch {}
+      try { await lock.init?.({ idleMinutes: 15 }); } catch {}
       await loadSettingsIntoForm();
+      await loadDavForm();
     })();
-    // ---- Security: App Lock
-document.getElementById('sec-enable')?.addEventListener('click', async ()=>{
-  const p1 = document.getElementById('sec-pin1').value.trim();
-  const p2 = document.getElementById('sec-pin2').value.trim();
-  const idle = Math.max(1, parseInt(document.getElementById('sec-idle').value||'15',10));
-  const bio = !!document.getElementById('sec-bio').checked;
-  if (!p1 || p1 !== p2) { toast('PIN mismatch','danger'); return; }
-  await lock.setupPin(p1, bio, idle);
-  toast('App Lock enabled','success');
-});
-
-document.getElementById('sec-disable')?.addEventListener('click', async ()=>{
-  await lock.disable();
-  toast('App Lock disabled','secondary');
-});
-
-// ---- Security: Encryption
-document.getElementById('enc-enable')?.addEventListener('click', async ()=>{
-  const pass = document.getElementById('enc-pass').value;
-  const remember = !!document.getElementById('enc-remember').checked;
-  if (!pass) { toast('Enter passphrase','danger'); return; }
-  await cryptoStore.enable(pass, remember);
-  window.FEATURE_ENCRYPTION = true;
-  toast('Encryption enabled','success');
-});
-
-document.getElementById('enc-resume')?.addEventListener('click', async ()=>{
-  const pass = document.getElementById('enc-pass').value;
-  if (!pass) { toast('Enter passphrase','danger'); return; }
-  const ok = await cryptoStore.resume(pass);
-  if (!ok) { toast('No encrypted data or wrong passphrase','danger'); return; }
-  window.FEATURE_ENCRYPTION = true;
-  toast('Session unlocked','success');
-});
-
-document.getElementById('enc-disable')?.addEventListener('click', async ()=>{
-  await cryptoStore.disable();
-  window.FEATURE_ENCRYPTION = false;
-  toast('Encryption disabled','secondary');
-});
-
-// ---- Sync: WebDAV
-async function loadDavForm(){
-  const cfg = await webdav.loadConfig() || {};
-  document.getElementById('dav-endpoint').value = cfg.endpoint || '';
-  document.getElementById('dav-user').value = cfg.username || '';
-  document.getElementById('dav-pass').value = cfg.password || '';
-  document.getElementById('dav-path').value = cfg.remotePath || '/StudyCompanion/bundle.json';
-}
-document.getElementById('dav-save')?.addEventListener('click', async ()=>{
-  const cfg = {
-    endpoint: document.getElementById('dav-endpoint').value.trim(),
-    username: document.getElementById('dav-user').value.trim(),
-    password: document.getElementById('dav-pass').value,
-    remotePath: document.getElementById('dav-path').value.trim() || '/StudyCompanion/bundle.json'
-  };
-  await webdav.saveConfig(cfg);
-  toast('Sync settings saved','success');
-});
-document.getElementById('dav-check')?.addEventListener('click', async ()=>{
-  try {
-    const r = await webdav.listRemote();
-    toast(r.exists ? `Remote exists (ETag ${r.etag||'-'})` : 'Not found','secondary');
-  } catch(e){ console.error(e); toast('Check failed','danger'); }
-});
-document.getElementById('dav-upload')?.addEventListener('click', async ()=>{
-  try {
-    // You already have an export-bundle helper; if not, quickly build it:
-    const bundle = await (storage.exportBundle?.() || { version:'2.0' });
-    await webdav.uploadBundle(bundle);
-    toast('Uploaded','success');
-  } catch(e){ console.error(e); toast('Upload failed','danger'); }
-});
-document.getElementById('dav-download')?.addEventListener('click', async ()=>{
-  try {
-    const remote = await webdav.downloadBundle();
-    // Preview/diff UI optional — for now just import:
-    await (storage.importBundle?.(remote));
-    toast('Downloaded & applied','success');
-  } catch(e){ console.error(e); toast('Download failed','danger'); }
-});
-
-// Kick off lock idle watcher & load current sync cfg
-try { await lock.init({ idleMinutes: 15 }); } catch {}
-await loadDavForm();
-
   </script>
 </body>
 </html>

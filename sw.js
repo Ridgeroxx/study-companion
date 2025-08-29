@@ -45,3 +45,40 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
+// --- Reminders: open app when user clicks notification
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/app.html';
+  event.waitUntil((async () => {
+    const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.includes(url) && 'focus' in c) return c.focus();
+    }
+    if (clients.openWindow) return clients.openWindow(url);
+  })());
+});
+
+// --- Periodic background refresh (if supported)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'reminder-refresh') {
+    event.waitUntil((async () => {
+      try {
+        // Ask a client to recompute reminders (avoids bundling localforage in SW)
+        const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const c of all) c.postMessage({ type: 'REMINDERS_REFRESH' });
+      } catch(e){}
+    })());
+  }
+});
+
+// focus the app when user clicks a reminder
+self.addEventListener('notificationclick', (event)=>{
+  event.notification.close();
+  event.waitUntil((async ()=>{
+    const all = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
+    if (all.length) return all[0].focus();
+    return self.clients.openWindow('./app.html');
+  })());
+});
+

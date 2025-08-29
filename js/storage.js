@@ -1,12 +1,28 @@
-// /js/storage.js
-// Lightweight localforage-backed storage layer (ES module)
+// /js/storage.js  — single source of truth (ES module)
 
+// --- Ensure localforage is present (handles pages that forgot to include it) ---
 if (!window.localforage) {
-  console.error('localforage missing — include it before storage.js');
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js';
+  await new Promise((resolve, reject) => {
+    s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+  });
 }
 
-const LF = window.localforage?.createInstance({ name: 'study-companion' });
+// --- Instance ---
+const LF = window.localforage.createInstance({ name: 'study-companion' });
 
+// --- Helpers ---
+const nowISO = () => new Date().toISOString();
+function generateId(prefix='item'){
+  const r = crypto.randomUUID?.() || Math.random().toString(36).slice(2,10);
+  return `${prefix}_${r}`;
+}
+async function _get(k, fb){ try{ const v = await LF.getItem(k); return v ?? fb; }catch{return fb} }
+async function _set(k, v){ return LF.setItem(k, v) }
+async function _rm(k){ try{ await LF.removeItem(k) }catch{} }
+
+// --- Keys ---
 const KEYS = {
   DOCS: 'docs',
   FAVS: 'favorites',
@@ -14,40 +30,26 @@ const KEYS = {
   PAGES: 'pages',
   SEARCH: 'search-index',
   MEETING_NOTES: 'meeting-notes',
-  SCHEDULE_MIDWEEK: 'schedule:midweek',
-  SCHEDULE_WEEKEND: 'schedule:weekend',
+  SCHEDULE: (kind) => `schedule_${kind}_v1`, // kind: midweek|weekend
+  CONVENTION: 'convention_v1',
   BOOKMARKS: (docId) => `bm:${docId}`,
-  ANN:  (docId) => `ann:${docId}`,
-  FILE: (key)   => `file:${key}`,
+  ANN:       (docId) => `ann:${docId}`,
+  FILE:      (key)   => `file:${key}`,
 };
 
-const nowISO = () => new Date().toISOString();
-function generateId(prefix='item'){
-  const r = crypto.randomUUID?.() || Math.random().toString(36).slice(2,10);
-  return `${prefix}_${r}`;
-}
-
-// /js/storage.js (inside init)
+// --- Schema migration (optional example, safe no-op if not used) ---
 const SCHEMA_VERSION_KEY = 'schema_version';
-const v = (await localforage.getItem(SCHEMA_VERSION_KEY)) || 1;
-if (v < 2) {
-  await migrateToV2();
-  await localforage.setItem(SCHEMA_VERSION_KEY, 2);
-}
+(async ()=>{
+  const v = await _get(SCHEMA_VERSION_KEY, 1);
+  if (v < 2) {
+    const s = await _get(KEYS.SETTINGS, {});
+    s.new = { ...(s.new||{}), savedSearches:[], templates:[], security:{}, sync:{}, ocr:{pages:[]}, links:{wikilinks:[], backlinksIndex:{}} };
+    await _set(KEYS.SETTINGS, s);
+    await _set(SCHEMA_VERSION_KEY, 2);
+  }
+})();
 
-async function migrateToV2() {
-  // add containers if missing
-  const def = { savedSearches: [], templates: [], security: {}, sync:{}, ocr:{pages:[]}, links:{wikilinks:[], backlinksIndex:{}} };
-  const s = (await getSettings()) || {};
-  s.new = { ...(s.new||{}), ...def };
-  await saveSettings(s); // your existing setter
-}
-
-async function _get(k, fb){ try{ const v = await LF.getItem(k); return v ?? fb; }catch{return fb} }
-async function _set(k, v){ return LF.setItem(k, v) }
-async function _rm(k){ try{ await LF.removeItem(k) }catch{} }
-
-/* ---------------- Documents ---------------- */
+// ---------------- Documents ----------------
 async function getDocuments(){ return await _get(KEYS.DOCS, []) }
 async function getActiveDocuments(){ return (await getDocuments()).filter(d=>!d.deletedAt) }
 async function getDocument(id){ return (await getDocuments()).find(d=>d.id===id) || null }
@@ -75,7 +77,7 @@ async function getRecentDocuments(n=12){
   return all.sort((a,b)=>new Date(b.lastOpened||b.updatedAt||0)-new Date(a.lastOpened||a.updatedAt||0)).slice(0,n);
 }
 
-/* ---------------- Files ---------------- */
+// ---------------- Files ----------------
 async function saveFile(fileKey, arrayBuffer){ return _set(KEYS.FILE(fileKey), arrayBuffer) }
 async function getFile(fileKey){ return _get(KEYS.FILE(fileKey), null) }
 async function getDocumentArrayBuffer(docId){
@@ -85,13 +87,13 @@ async function getDocumentArrayBuffer(docId){
   return null;
 }
 
-/* ---------------- Import file (EPUB/PDF/DOCX/TXT/MD) ---------------- */
-function _ext(name){ const m = /\.[^\.]+$/.exec(name||''); return (m? m[0].slice(1) : '').toLowerCase(); }
+// ---------------- Import file ----------------
+function _ext(name){ const m=/\.[^\.]+$/.exec(name||''); return (m? m[0].slice(1) : '').toLowerCase(); }
 function _typeFromExt(ext){
-  if(ext==='epub')return 'epub';
-  if(ext==='pdf')return 'pdf';
-  if(ext==='docx')return 'docx';
-  if(ext==='md'||ext==='markdown')return 'md';
+  if (ext==='epub') return 'epub';
+  if (ext==='pdf')  return 'pdf';
+  if (ext==='docx') return 'docx';
+  if (ext==='md'||ext==='markdown') return 'md';
   return 'txt';
 }
 async function importFile(file){
@@ -100,7 +102,7 @@ async function importFile(file){
   const type = _typeFromExt(ext);
   const fileKey = `orig:${id}`;
   const buf = await file.arrayBuffer();
-  await LF.setItem(KEYS.FILE(fileKey), buf);
+  await _set(KEYS.FILE(fileKey), buf);
   const doc = await saveDocument({
     id, title: file.name.replace(/\.[^\.]+$/,'') || 'Untitled',
     type, fileKey, createdAt: nowISO(), updatedAt: nowISO()
@@ -109,7 +111,7 @@ async function importFile(file){
   return doc;
 }
 
-/* ---------------- Annotations ---------------- */
+// ---------------- Annotations ----------------
 async function getAnnotations(docId){ return await _get(KEYS.ANN(docId), []) }
 async function saveAnnotations(docId, list){ return _set(KEYS.ANN(docId), Array.isArray(list)? list : []) }
 async function getAllAnnotations(){
@@ -118,11 +120,11 @@ async function getAllAnnotations(){
   return out;
 }
 
-/* ---------------- Bookmarks ---------------- */
+// ---------------- Bookmarks ----------------
 async function getBookmarks(docId){ return await _get(KEYS.BOOKMARKS(docId), []) }
 async function saveBookmarks(docId, list){ return _set(KEYS.BOOKMARKS(docId), Array.isArray(list)?list:[]) }
 
-/* ---------------- Favorites ---------------- */
+// ---------------- Favorites ----------------
 async function getFavorites(){ return await _get(KEYS.FAVS, []) }
 async function toggleFavorite(docId){
   const list = await getFavorites(); const i=list.indexOf(docId);
@@ -130,11 +132,11 @@ async function toggleFavorite(docId){
   await _set(KEYS.FAVS, list); return list;
 }
 
-/* ---------------- Settings ---------------- */
+// ---------------- Settings ----------------
 async function getSettings(){ return await _get(KEYS.SETTINGS, {}) }
 async function saveSettings(s){ return _set(KEYS.SETTINGS, s || {}) }
 
-/* ---------------- Pages ---------------- */
+// ---------------- Pages ----------------
 async function getPages(){ return await _get(KEYS.PAGES, []) }
 async function createPage({ title='Untitled', content='' }={}){
   const pages = await getPages();
@@ -148,12 +150,12 @@ async function updatePage(id, patch){
 }
 async function deletePage(id){ const pages=await getPages(); await _set(KEYS.PAGES, pages.filter(p=>p.id!==id)) }
 
-/* ---------------- Search cache ---------------- */
+// ---------------- Search cache ----------------
 async function getSearchIndex(){ return await _get(KEYS.SEARCH, null) }
 async function saveSearchIndex(v){ return _set(KEYS.SEARCH, v) }
 async function clearSearchIndex(){ return _rm(KEYS.SEARCH) }
 
-/* ---------------- Meeting Notes (NEW) ---------------- */
+// ---------------- Meeting Notes ----------------
 async function getMeetingNotes(){ return await _get(KEYS.MEETING_NOTES, []) }
 async function saveMeetingNote(note){
   const list = await getMeetingNotes();
@@ -169,17 +171,17 @@ async function deleteMeetingNote(id){
   await _set(KEYS.MEETING_NOTES, list.filter(n => n.id !== id));
 }
 
-/* ---------------- Schedule (NEW, used by schedule.js) ---------------- */
-async function getSchedule(kind){ // 'midweek' | 'weekend'
-  const key = kind === 'weekend' ? KEYS.SCHEDULE_WEEKEND : KEYS.SCHEDULE_MIDWEEK;
-  return await _get(key, []);
-}
-async function saveSchedule(kind, list){
-  const key = kind === 'weekend' ? KEYS.SCHEDULE_WEEKEND : KEYS.SCHEDULE_MIDWEEK;
-  return _set(key, Array.isArray(list) ? list : []);
-}
+// ---------------- Schedules (weekly) ----------------
+// shape: [{ id, day:0-6, time:'HH:mm' }]
+async function getSchedule(kind){ return await _get(KEYS.SCHEDULE(kind), []) }
+async function saveSchedule(kind, list){ return _set(KEYS.SCHEDULE(kind), Array.isArray(list)?list:[]) }
 
-/* ---------------- Misc ---------------- */
+// ---------------- Convention (one-off sessions) ----------------
+// shape: { sessions:[ { date:'YYYY-MM-DD', time:'HH:mm', label? } ] }
+async function getConvention(){ return await _get(KEYS.CONVENTION, { sessions: [] }) }
+async function setConvention(conv){ await _set(KEYS.CONVENTION, conv || { sessions: [] }); return conv; }
+
+// ---------------- Misc ----------------
 async function getDocumentBody(docId){
   const ab = await getDocumentArrayBuffer(docId);
   if (ab && ab.byteLength) return new TextDecoder().decode(ab);
@@ -187,7 +189,7 @@ async function getDocumentBody(docId){
 }
 async function setItem(k,v){ return _set(k,v) }
 async function getItem(k){ return _get(k,null) }
-async function init(){ /* no-op; LF ready */ }
+async function init(){ /* no-op */ }
 
 const storage = {
   init, generateId,
@@ -199,14 +201,12 @@ const storage = {
   getSettings, saveSettings,
   getPages, createPage, updatePage, deletePage,
   getSearchIndex, saveSearchIndex, clearSearchIndex,
-  // NEW:
   getMeetingNotes, saveMeetingNote, deleteMeetingNote,
   getSchedule, saveSchedule,
+  getConvention, setConvention,
   getDocumentBody,
   setItem, getItem
 };
 
 export { storage };
-
-// Expose globally for inline handlers safety (optional)
-window.storage = storage;
+window.storage = storage; // optional global

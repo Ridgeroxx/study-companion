@@ -12,7 +12,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
-  <!-- UI polish / dark tweaks -->
+  <!-- App styles -->
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/dark.css">
 
@@ -22,39 +22,37 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <!-- Make sure this file exists: /icons/icon-192.png -->
   <link rel="apple-touch-icon" href="icons/logo.png">
 
   <!-- CSP: allow CDNs for CSS/fonts so icons actually load -->
   <meta http-equiv="Content-Security-Policy"
-  content="
-    default-src 'self';
-    img-src 'self' data: blob:;
-    font-src 'self' data: https://cdnjs.cloudflare.com;
-    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
-    connect-src 'self' blob:;
-    worker-src 'self' blob: https://cdnjs.cloudflare.com;
-    object-src 'none';
-    base-uri 'self';
-    upgrade-insecure-requests;
-  ">
+    content="
+      default-src 'self';
+      img-src 'self' data: blob:;
+      font-src 'self' data: https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+      style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+      script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+      connect-src 'self' blob:;
+      worker-src 'self' blob: https://cdnjs.cloudflare.com;
+      object-src 'none';
+      base-uri 'self';
+      upgrade-insecure-requests;
+    ">
 
-  <!-- Vendor core -->
-<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-  if (window['pdfjsLib']) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-</script>
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
+  <!-- Vendor core (BEFORE any module that uses them) -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- Activity stub -->
   <script>window.activity=window.activity||{logDocOpened(){},logDocImported(){},logNote(){},log(){}};</script>
@@ -77,6 +75,15 @@
     [data-bs-theme="dark"] .note-item{ background:#161616; border-color: rgba(255,255,255,.14); }
     .sf-item{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem; border-radius:8px;}
     .sf-item:hover{ background: rgba(0,0,0,.03); }
+
+    /* Neater links/buttons — remove accidental underlines */
+    a, a:hover, a:focus { text-decoration: none; }
+    .btn { text-decoration: none !important; }
+    .side-list a, .hero a, .navbar a { text-decoration: none !important; }
+
+    /* Preview bg consistency */
+    #markdown-preview { background: var(--bs-body-bg); }
+    [data-bs-theme="dark"] #markdown-preview { background: #121212; }
 
     @media (max-width: 991.98px) {
       body { overflow:auto; }
@@ -101,19 +108,20 @@
             <i class="fa-solid fa-bars"></i>
           </button>
           <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Home"><i class="fa-solid fa-house"></i></a>
-          <span id="mtg-nav-title" class="fw-semibold">Meetings</span>
+          <span id="mtg-nav-title" class="fw-semibold" data-i18n="nav_meetings">Meetings</span>
         </div>
         <div class="d-flex align-items-center gap-2">
           <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
           <a class="btn btn-sm btn-outline-primary" href="reader.html" title="Reader"><i class="fa-solid fa-book-open"></i></a>
 
+          <!-- Tiny Language switcher (EN/ES) -->
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
               <i class="fas fa-language"></i> <span id="current-language">EN</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="#" onclick="window.app && window.app.setLanguage('en')">English</a></li>
-              <li><a class="dropdown-item" href="#" onclick="window.app && window.app.setLanguage('es')">Español</a></li>
+              <li><a class="dropdown-item" href="#" id="lang-en">English</a></li>
+              <li><a class="dropdown-item" href="#" id="lang-es">Español</a></li>
             </ul>
           </div>
 
@@ -125,13 +133,13 @@
 
     <!-- Left sidebar (desktop) -->
     <aside class="sidebar">
-      <div class="side-title" id="mtg-continue-title">Continue</div>
+      <div class="side-title" id="mtg-continue-title" data-i18n="continue">Continue</div>
       <div id="side-recent" class="side-list small text-muted px-2">Loading…</div>
 
-      <div class="side-title" id="mtg-fav-title">Favorites</div>
+      <div class="side-title" id="mtg-fav-title" data-i18n="favorites">Favorites</div>
       <div id="side-favorites" class="side-list small text-muted px-2">No favorites yet.</div>
 
-      <div class="side-title" id="mtg-pages-title">Pages</div>
+      <div class="side-title" id="mtg-pages-title" data-i18n="pages">Pages</div>
       <div id="side-pages" class="side-list small text-muted px-2">Loading…</div>
 
       <div class="side-title">Smart Folders</div>
@@ -143,8 +151,8 @@
       <div class="container-fluid py-3">
         <div class="hero mb-3 d-flex align-items-center justify-content-between">
           <div>
-            <div id="mtg-hero-title" class="fs-5 fw-bold">Congregation Meetings</div>
-            <div id="mtg-hero-sub" class="text-muted small">Plan midweek & weekend, and take fast notes during talks.</div>
+            <div id="mtg-hero-title" class="fs-5 fw-bold" data-i18n="meeting_hero_title">Congregation Meetings</div>
+            <div id="mtg-hero-sub" class="text-muted small" data-i18n="meeting_hero_sub">Plan midweek & weekend, and take fast notes during talks.</div>
           </div>
           <div class="d-flex gap-2">
             <button id="btn-new-note" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#editorWrap">
@@ -170,7 +178,7 @@
           <div class="col-12 col-xl-6">
             <div class="p-3 border rounded">
               <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="section-title" id="mtg-midweek-title">Midweek</div>
+                <div class="section-title" id="mtg-midweek-title" data-i18n="midweek">Midweek</div>
                 <button id="btn-add-midweek" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('midweek')"><i class="fa-solid fa-plus"></i> Add</button>
               </div>
               <div id="midweek-schedule" class="small">Loading…</div>
@@ -179,7 +187,7 @@
           <div class="col-12 col-xl-6">
             <div class="p-3 border rounded">
               <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="section-title" id="mtg-weekend-title">Weekend</div>
+                <div class="section-title" id="mtg-weekend-title" data-i18n="weekend">Weekend</div>
                 <button id="btn-add-weekend" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('weekend')"><i class="fa-solid fa-plus"></i> Add</button>
               </div>
               <div id="weekend-schedule" class="small">Loading…</div>
@@ -191,26 +199,26 @@
         <div id="editorWrap" class="collapse show mt-3">
           <div class="p-3 border rounded">
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <div class="section-title" id="mtg-notes-title">Meeting Notes</div>
-              <div class="small text-muted" id="mtg-notes-sub">Use / menu, toolbar, and live preview</div>
+              <div class="section-title" id="mtg-notes-title" data-i18n="meeting_notes_title">Meeting Notes</div>
+              <div class="small text-muted" id="mtg-notes-sub" data-i18n="meeting_notes_sub">Use / menu, toolbar, and live preview</div>
             </div>
 
             <input type="hidden" id="meeting-id"/>
 
             <div class="row g-3">
               <div class="col-md-4 col-lg-3">
-                <label id="label-title" class="form-label">Title</label>
+                <label id="label-title" class="form-label" data-i18n="label_title">Title</label>
                 <input id="meeting-title" class="form-control" placeholder="e.g., Midweek – Talk Highlights"/>
               </div>
               <div class="col-md-3 col-lg-2">
-                <label id="label-date" class="form-label">Date</label>
+                <label id="label-date" class="form-label" data-i18n="label_date">Date</label>
                 <input id="meeting-date" type="date" class="form-control"/>
               </div>
               <div class="col-md-3 col-lg-2">
-                <label id="label-type" class="form-label">Type</label>
+                <label id="label-type" class="form-label" data-i18n="label_type">Type</label>
                 <select id="meeting-type" class="form-select">
-                  <option value="midweek">Midweek</option>
-                  <option value="weekend">Weekend</option>
+                  <option value="midweek" data-i18n="midweek">Midweek</option>
+                  <option value="weekend" data-i18n="weekend">Weekend</option>
                 </select>
               </div>
               <div class="col-md-2 col-lg-2 d-flex align-items-end">
@@ -235,7 +243,7 @@
               <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for templates and commands."></textarea>
 
               <div class="d-flex justify-content-between align-items-center mt-2">
-                <div class="small text-muted" id="label-preview">Preview</div>
+                <div class="small text-muted" id="label-preview" data-i18n="preview">Preview</div>
                 <div class="d-flex gap-2">
                   <button class="btn btn-sm btn-outline-danger" onclick="notes.deleteMeetingNote?.()"><i class="fa-regular fa-trash-can"></i></button>
                   <button id="btn-save-note" class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()"><i class="fa-solid fa-save me-1"></i>Save</button>
@@ -249,8 +257,8 @@
         <!-- List of meeting notes -->
         <div class="p-3 border rounded mt-3">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="section-title" id="mtg-list-title">My Meeting Notes</div>
-            <div class="small text-muted" id="mtg-list-sub">Click any note to edit</div>
+            <div class="section-title" id="mtg-list-title" data-i18n="my_meeting_notes">My Meeting Notes</div>
+            <div class="small text-muted" id="mtg-list-sub" data-i18n="my_meeting_notes_sub">Click any note to edit</div>
           </div>
           <div id="meeting-notes-list" class="small text-muted">Loading…</div>
         </div>
@@ -272,17 +280,17 @@
   <!-- Offcanvas Sidebar (mobile) -->
   <div class="offcanvas offcanvas-start" tabindex="-1" id="sideDrawer">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="mtg-side-title">Menu</h5>
+      <h5 class="offcanvas-title" id="mtg-side-title" data-i18n="menu">Menu</h5>
       <button class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body">
-      <div class="side-title" id="mtg-continue-title-m">Continue</div>
+      <div class="side-title" id="mtg-continue-title-m" data-i18n="continue">Continue</div>
       <div id="side-recent-m" class="side-list small text-muted">Loading…</div>
 
-      <div class="side-title mt-2" id="mtg-fav-title-m">Favorites</div>
+      <div class="side-title mt-2" id="mtg-fav-title-m" data-i18n="favorites">Favorites</div>
       <div id="side-favorites-m" class="side-list small text-muted">No favorites yet.</div>
 
-      <div class="side-title mt-2" id="mtg-pages-title-m">Pages</div>
+      <div class="side-title mt-2" id="mtg-pages-title-m" data-i18n="pages">Pages</div>
       <div id="side-pages-m" class="side-list small text-muted">Loading…</div>
 
       <div class="side-title mt-2">Smart Folders</div>
@@ -314,18 +322,137 @@
     import { bindSlashMenu } from './js/notes/templates.js';
     import * as SS from './js/search/savedSearches.js';
 
+    /* ---------------- Tiny Language component (EN/ES toggle)
+       - toggles localStorage('app_lang')
+       - calls window.app.setLanguage if available
+       - re-applies ONLY [data-i18n] nodes (no other text touched)
+    ------------------ */
+    const I18N_FALLBACK = {
+      en: {
+        nav_meetings: 'Meetings',
+        continue: 'Continue',
+        favorites: 'Favorites',
+        pages: 'Pages',
+        menu: 'Menu',
+        meeting_hero_title: 'Congregation Meetings',
+        meeting_hero_sub: 'Plan midweek & weekend, and take fast notes during talks.',
+        btn_new_note: 'New Note',
+        import: 'Import',
+        btn_add: 'Add',
+        meeting_notes_title: 'Meeting Notes',
+        meeting_notes_sub: 'Use / menu, toolbar, and live preview',
+        label_title: 'Title',
+        label_date: 'Date',
+        label_type: 'Type',
+        btn_scripture: 'Scripture',
+        preview: 'Preview',
+        btn_save: 'Save',
+        my_meeting_notes: 'My Meeting Notes',
+        my_meeting_notes_sub: 'Click any note to edit',
+        midweek: 'Midweek',
+        weekend: 'Weekend',
+        right_notes_title: 'Notes (quick view)'
+      },
+      es: {
+        nav_meetings: 'Reuniones',
+        continue: 'Continuar',
+        favorites: 'Favoritos',
+        pages: 'Páginas',
+        menu: 'Menú',
+        meeting_hero_title: 'Reuniones de la congregación',
+        meeting_hero_sub: 'Planifica entre semana y fin de semana, y toma notas rápidas durante los discursos.',
+        btn_new_note: 'Nueva nota',
+        import: 'Importar',
+        btn_add: 'Añadir',
+        meeting_notes_title: 'Notas de la reunión',
+        meeting_notes_sub: 'Usa el menú /, la barra de herramientas y la vista previa en vivo',
+        label_title: 'Título',
+        label_date: 'Fecha',
+        label_type: 'Tipo',
+        btn_scripture: 'Escritura',
+        preview: 'Vista previa',
+        btn_save: 'Guardar',
+        my_meeting_notes: 'Mis notas de reunión',
+        my_meeting_notes_sub: 'Haz clic en cualquier nota para editarla',
+        midweek: 'Entre semana',
+        weekend: 'Fin de semana',
+        right_notes_title: 'Notas (vista rápida)'
+      }
+    };
+
+    function getLang(){
+      return (localStorage.getItem('app_lang') === 'es') ? 'es' : 'en';
+    }
+    function getT(key){
+      if (window.app?.translate){
+        const t = window.app.translate(key);
+        if (t && t !== key) return t;
+      }
+      const lang = getLang();
+      return I18N_FALLBACK[lang]?.[key] || I18N_FALLBACK.en[key] || null;
+    }
+    function applyI18N(){
+      // Update only [data-i18n] nodes
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const k = el.getAttribute('data-i18n');
+        const tx = getT(k);
+        if (tx) el.textContent = tx; // if missing, keep existing text
+      });
+
+      // Buttons with icons must be rebuilt to keep icons:
+      const btnNew = document.getElementById('btn-new-note');
+      if (btnNew) btnNew.innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i>${getT('btn_new_note')||'New Note'}`;
+
+      const btnImp = document.getElementById('btn-import-dd');
+      if (btnImp) btnImp.innerHTML = `<i class="fa-solid fa-upload me-1"></i>${getT('import')||'Import'}`;
+
+      const btnSave = document.getElementById('btn-save-note');
+      if (btnSave) btnSave.innerHTML = `<i class="fa-solid fa-save me-1"></i>${getT('btn_save')||'Save'}`;
+
+      const addTxt = getT('btn_add') || 'Add';
+      const am = document.getElementById('btn-add-midweek');
+      const aw = document.getElementById('btn-add-weekend');
+      if (am) am.innerHTML = `<i class="fa-solid fa-plus"></i> ${addTxt}`;
+      if (aw) aw.innerHTML = `<i class="fa-solid fa-plus"></i> ${addTxt}`;
+
+      const scr = document.getElementById('btn-insert-scripture');
+      if (scr) scr.innerHTML = `<i class="fa-solid fa-book-bible me-1"></i> ${getT('btn_scripture')||'Scripture'}`;
+
+      const rnT = document.getElementById('right-notes-title');
+      if (rnT) rnT.innerHTML = `<i class="fa-solid fa-sticky-note me-1"></i> ${getT('right_notes_title')||'Notes (quick view)'}`;
+
+      const badge = document.getElementById('current-language');
+      if (badge) badge.textContent = getLang().toUpperCase();
+    }
+    function setLanguage(lang){
+      const target = (lang === 'es') ? 'es' : 'en';
+      localStorage.setItem('app_lang', target);
+      // Let global app (if present) also know
+      if (window.app?.setLanguage) { try{ window.app.setLanguage(target); }catch{} }
+      // Re-apply only [data-i18n] on this page
+      applyI18N();
+    }
+    // Expose tiny component to window for reuse if needed
+    window.meetingsLang = { setLanguage, applyI18N };
+
+    // Wire dropdown
+    document.getElementById('lang-en')?.addEventListener('click', (e)=>{ e.preventDefault(); setLanguage('en'); });
+    document.getElementById('lang-es')?.addEventListener('click', (e)=>{ e.preventDefault(); setLanguage('es'); });
+
+    /* ---------------- Toast helper ---------------- */
+    const toast = (msg, type='primary') => {
+      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
+      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+      new bootstrap.Toast(el, {autohide:true, delay:2000}).show();
+    };
+
+    /* ---------------- Markdown live preview ---------------- */
     const contentEl = document.getElementById('meeting-content');
     const prevEl = document.getElementById('markdown-preview');
     const titleEl = document.getElementById('meeting-title');
     const dateEl  = document.getElementById('meeting-date');
     const typeEl  = document.getElementById('meeting-type');
     const idEl    = document.getElementById('meeting-id');
-
-    const toast = (msg, type='primary') => {
-      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
-      body.textContent = msg; el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-      new bootstrap.Toast(el, {autohide:true, delay:2000}).show();
-    };
 
     const renderPrev = () => {
       const src = contentEl.value || '';
@@ -342,13 +469,14 @@
     // Slash menu for editor
     bindSlashMenu(contentEl);
 
-    // Wire Import dropdown to global reader helpers (exposed by app.js)
-    document.getElementById('imp-epub')?.addEventListener('click', ()=> window.reader?.importEpub?.());
-    document.getElementById('imp-pdf')?.addEventListener('click',  ()=> window.reader?.importPdf?.());
-    document.getElementById('imp-docx')?.addEventListener('click', ()=> window.reader?.importDocx?.());
-    document.getElementById('imp-text')?.addEventListener('click', ()=> window.reader?.importText?.());
+    // Import dropdown wired to global reader helpers (exposed by app.js)
+    const guard = (fn, kind) => fn ? fn() : alert(`Reader importer for ${kind} is not available yet.`);
+    document.getElementById('imp-epub')?.addEventListener('click', ()=> guard(window.reader?.importEpub, 'EPUB'));
+    document.getElementById('imp-pdf') ?.addEventListener('click', ()=> guard(window.reader?.importPdf,  'PDF'));
+    document.getElementById('imp-docx')?.addEventListener('click', ()=> guard(window.reader?.importDocx,'DOCX'));
+    document.getElementById('imp-text')?.addEventListener('click', ()=> guard(window.reader?.importText,'TEXT'));
 
-    // Sidebar / library helpers
+    /* ---------------- Sidebar / library helpers ---------------- */
     async function loadSidebar(){
       const all = await (storage.getActiveDocuments?.() || storage.getDocuments?.() || []);
       const active = (all||[]).filter(d=>!d.deletedAt);
@@ -484,40 +612,18 @@
       }
     };
 
-    // i18n for this page (uses window.app.translate)
-    window.updateMeetingLanguageUI = function(){
-      const t = (k) => window.app?.translate?.(k) || k;
-      const id = (s, v)=>{ const el=document.getElementById(s); if(el) el.textContent=v; };
-
-      id('mtg-nav-title', t('nav_meetings'));
-      id('mtg-continue-title', t('continue')); id('mtg-continue-title-m', t('continue'));
-      id('mtg-fav-title', t('favorites'));     id('mtg-fav-title-m', t('favorites'));
-      id('mtg-pages-title', t('pages'));       id('mtg-pages-title-m', t('pages'));
-      const sideTitle = document.getElementById('mtg-side-title'); if (sideTitle) sideTitle.textContent = t('menu');
-      id('mtg-hero-title', t('meeting_hero_title'));
-      id('mtg-hero-sub', t('meeting_hero_sub'));
-      const bn = document.getElementById('btn-new-note'); if (bn) bn.innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i>${t('btn_new_note')}`;
-      const bi = document.getElementById('btn-import-dd'); if (bi) bi.innerHTML = `<i class="fa-solid fa-upload me-1"></i>${t('import')}`;
-      const am = document.getElementById('btn-add-midweek'); if (am) am.innerHTML = `<i class="fa-solid fa-plus"></i> ${t('btn_add')}`;
-      const aw = document.getElementById('btn-add-weekend'); if (aw) aw.innerHTML = `<i class="fa-solid fa-plus"></i> ${t('btn_add')}`;
-      const sv = document.getElementById('btn-save-note'); if (sv) sv.innerHTML = `<i class="fa-solid fa-save me-1"></i>${t('btn_save')}`;
-      id('mtg-midweek-title', t('midweek')); id('mtg-weekend-title', t('weekend'));
-      id('mtg-notes-title', t('meeting_notes_title')); id('mtg-notes-sub', t('meeting_notes_sub'));
-      id('mtg-list-title', t('my_meeting_notes'));     id('mtg-list-sub', t('my_meeting_notes_sub'));
-      const scr = document.getElementById('btn-insert-scripture'); if (scr) scr.innerHTML = `<i class="fa-solid fa-book-bible me-1"></i> ${t('btn_scripture')}`;
-      const pv  = document.getElementById('label-preview'); if (pv) pv.textContent = t('preview');
-      const rnT = document.getElementById('right-notes-title'); if (rnT) rnT.innerHTML = `<i class="fa-solid fa-sticky-note me-1"></i> ${t('right_notes_title')}`;
-    };
-
     // Init
     (async () => {
       try { await storage.init?.(); } catch {}
       try { await schedule.init?.(); } catch {}
       await loadSidebar();
       await loadMeetingNotes();
-      window.updateMeetingLanguageUI?.();
 
-      // Handle deep link: #note=<id> (open created note) or legacy #template=<id> (create then open)
+      // Apply i18n after app.js binds window.app (small delay)
+      await new Promise(r => setTimeout(r, 120));
+      applyI18N();
+
+      // Handle deep links: #note=<id> (open created note) or legacy #template=<id> (create then open)
       const hash = location.hash.replace(/^#/, '');
       if (hash) {
         const p = new URLSearchParams(hash);
@@ -527,11 +633,9 @@
           window.editMeeting?.(noteId);
           document.getElementById('editorWrap')?.classList.add('show');
         } else if (tplId) {
-          // Delegate creation to app.js (creates note & redirects here with #note=...)
           if (window.app?.createFromTemplate) {
             await window.app.createFromTemplate(tplId);
           } else {
-            // Fallback: just insert a title stub
             titleEl.value = (tplId.charAt(0).toUpperCase()+tplId.slice(1)) + ' Note';
           }
         }

@@ -1,4 +1,4 @@
-// App shell + home page actions (global & safe for inline bridges)
+// js/app.js — App shell + home page actions (global & safe for inline bridges)
 
 import { storage } from './storage.js';
 import { reader } from './reader.js';
@@ -7,9 +7,8 @@ import { schedule } from './schedule.js';
 import { FLAGS } from './flags.js';
 import { bindSlashMenu } from './notes/templates.js';
 import { lock } from './security/lock.js';
+import * as reminders from './reminders.js';
 
-// call regardless; it only activates if user enabled lock in settings 
-try {await lock.init({idleMinutes: 15});} catch {}
 
 const I18N = {
   en: {
@@ -53,10 +52,7 @@ const I18N = {
 };
 
 const TEMPLATES = {
-  outline: {
-    title: 'Outline',
-    type: 'midweek',
-    body:
+  outline: { title:'Outline', type:'midweek', body:
 `# Title
 
 ## Main Points
@@ -70,12 +66,8 @@ const TEMPLATES = {
 ## Actions
 - [ ] Task 1
 - [ ] Task 2
-`
-  },
-  study: {
-    title: 'Study Note',
-    type: 'midweek',
-    body:
+`},
+  study: { title:'Study Note', type:'midweek', body:
 `# Study Note
 
 **Topic:**  
@@ -89,12 +81,8 @@ const TEMPLATES = {
 
 ## Takeaways
 - 
-`
-  },
-  sermon: {
-    title: 'Sermon Outline',
-    type: 'weekend',
-    body:
+`},
+  sermon: { title:'Sermon Outline', type:'weekend', body:
 `# Sermon Outline
 
 **Theme:**  
@@ -111,12 +99,8 @@ const TEMPLATES = {
 
 ## Application
 - 
-`
-  },
-  meeting: {
-    title: 'Meeting Notes',
-    type: 'midweek',
-    body:
+`},
+  meeting: { title:'Meeting Notes', type:'midweek', body:
 `# Meeting Notes
 
 **Date:** ${new Date().toISOString().slice(0,10)}
@@ -129,8 +113,7 @@ const TEMPLATES = {
 
 ## To remember
 - 
-`
-  }
+`}
 };
 
 class App {
@@ -144,35 +127,51 @@ class App {
       if (!doc?.id) return;
       location.href = `reader.html?doc=${encodeURIComponent(doc.id)}`;
     };
+
+    // Expose globals early
+    window.storage = storage;
+    window.reader  = reader;
+    window.notes   = notes;
+    window.schedule= schedule;
+    window.app     = this;
   }
 
   async init() {
     try { await storage.init?.(); } catch {}
+    
 
-    // expose globals for inline bridges
-    window.storage = storage;
-    window.reader = reader;
-    window.notes = notes;
-    window.schedule = schedule;
-    window.app = this;
+    // Initialize Security Lock (once)
+    try {
+      if (FLAGS?.lock) await lock.init({ enabled:true, idleMinutes: 15 });
+      else await lock.init({ idleMinutes: 15 }); // safe no-op if disabled
+    } catch {}
 
-    // bind slash menu only if the meetings editor exists on this page
+    // Initialize Reminders (once)
+    await reminders.init(storage);
+
+    // Global hooks to refresh reminders when background asks
+    navigator.serviceWorker?.addEventListener('message', (evt)=>{
+    if (evt.data?.type === 'REMINDERS_REFRESH') reminders.refresh(storage);
+    });
+
+    // Optional events schedule.js can dispatch after saving
+    window.addEventListener('schedule:updated', ()=> reminders.refresh());
+    window.addEventListener('convention:updated', ()=> reminders.refresh());
+
+    // Slash menu only if the meetings editor exists on this page
     const meetingEditor = document.getElementById('meeting-content');
     if (meetingEditor) { try { bindSlashMenu(meetingEditor); } catch {} }
 
     this._initThemeToggle();
     this._initLanguageButtons();
-
     this._wireHomeButtons();
+
     try { await this.loadHomeLists(); } catch (e) { console.warn(e); }
     this.updateLanguageUI();
 
-    // Optional: if feature-flag requires lock immediately at boot
-    (async ()=>{
-  try {
-    if (FLAGS?.lock) await lock.init({ enabled:true, idleMinutes: 15 });
-  } catch(e) { /* optional */ }
-  })();
+    // Home dynamic cards
+    this.renderUpcoming().catch(()=>{});
+    this.renderRandomHighlight().catch(()=>{});
   }
 
   /* ---------------- THEME / LANGUAGE ---------------- */
@@ -195,11 +194,28 @@ class App {
       const badge = document.getElementById('current-language');
       if (badge) badge.textContent = this.currentLanguage.toUpperCase();
       this.updateLanguageUI();
+      // Page-level language refreshers can hook this:
+      try { window.meetingsLang?.applyI18N?.(); } catch {}
     };
     document.getElementById('lang-en')?.addEventListener('click', () => set('en'));
     document.getElementById('lang-es')?.addEventListener('click', () => set('es'));
     set(this.currentLanguage);
   }
+
+  insertMarkdown(prefix='', suffix=''){
+  const ta = document.getElementById('meeting-content') || document.querySelector('textarea:focus');
+  if (!ta) return;
+  const start = ta.selectionStart ?? ta.value.length;
+  const end   = ta.selectionEnd   ?? ta.value.length;
+  const before= ta.value.slice(0, start);
+  const middle= ta.value.slice(start, end);
+  const after = ta.value.slice(end);
+  ta.value = before + (prefix||'') + middle + (suffix||'') + after;
+  const caret = start + (prefix||'').length + middle.length;
+  ta.selectionStart = ta.selectionEnd = caret;
+  ta.dispatchEvent(new Event('input', {bubbles:true}));
+}
+
 
   translate(key) {
     const lang = this.currentLanguage || 'en';
@@ -212,17 +228,15 @@ class App {
     const badge = document.getElementById('current-language');
     if (badge) badge.textContent = this.currentLanguage.toUpperCase();
     this.updateLanguageUI?.();
-    try { window.updateMeetingLanguageUI?.(); } catch {}
+    try { window.meetingsLang?.applyI18N?.(); } catch {}
   }
 
   updateLanguageUI() {
-    // Hero
     const heroTitle = document.querySelector('.hero .h5.fw-bold');
-    const heroSub = document.querySelector('.hero .small.text-muted');
+    const heroSub   = document.querySelector('.hero .small.text-muted');
     if (heroTitle) heroTitle.textContent = this.translate('welcome');
     if (heroSub)   heroSub.textContent   = this.translate('welcome_sub');
 
-    // Buttons
     const newPageBtn = document.getElementById('btn-new-page');
     if (newPageBtn) newPageBtn.innerHTML = `<i class="fa-solid fa-file-circle-plus me-1"></i>${this.translate('new_page')}`;
 
@@ -241,14 +255,12 @@ class App {
     const openMini = document.getElementById('open-lib-mini');
     if (openMini) openMini.textContent = this.translate('open');
 
-    // Section headings (in order)
     const sections = document.querySelectorAll('.section-title');
     if (sections[0]) sections[0].textContent = this.translate('quick_capture');
     if (sections[1]) sections[1].textContent = this.translate('continue_reading');
     if (sections[2]) sections[2].textContent = this.translate('recent');
     if (sections[3]) sections[3].textContent = this.translate('your_library');
 
-    // Quick capture subtitle
     const qc = document.querySelector('.glass-card .small.text-muted');
     if (qc) qc.textContent = this.translate('quick_capture_sub');
   }
@@ -420,6 +432,51 @@ class App {
     }
   }
 
+  /* ---------------- Upcoming (Home) ---------------- */
+  async renderUpcoming() {
+    const box = document.getElementById('home-upcoming');
+    if (!box) return;
+    try {
+      const rows = [];
+
+      // Pull from reminders so it's consistent with notifications
+      const list = await reminders.listUpcoming(5);
+      for (const r of list) {
+        rows.push({
+          label: r.title,
+          when: new Date(r.whenISO)
+        });
+      }
+
+      box.innerHTML = rows.length ? rows.map(r=>`
+        <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-1">
+          <div><i class="fa-regular fa-bell me-2"></i>${r.label}</div>
+          <div class="text-muted">${r.when.toLocaleString()}</div>
+        </div>`).join('') : `<div class="text-muted">No upcoming items.</div>`;
+    } catch(e) {
+      console.error(e);
+      box.innerHTML = `<div class="text-danger">Failed to load.</div>`;
+    }
+  }
+
+  async renderRandomHighlight() {
+    const box = document.getElementById('home-highlight');
+    if (!box) return;
+    try {
+      const anns = await (storage.getAllAnnotations?.() || []);
+      const only = (anns||[]).filter(a => (a.quote||a.text||a.note));
+      if (!only.length) { box.innerHTML = `<div class="text-muted">No highlights yet.</div>`; return; }
+      const pick = only[Math.floor(Math.random()*only.length)];
+      const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+      box.innerHTML = `
+        <blockquote class="mb-2">“${esc(pick.quote||pick.text||pick.note||'') }”</blockquote>
+        ${pick.documentId ? `<button class="btn btn-sm btn-outline-primary" onclick="window.app.openDoc('${pick.documentId}')"><i class="fa-solid fa-forward"></i> Open book</button>`:''}
+      `;
+    } catch {
+      box.innerHTML = `<div class="text-danger">Failed to load.</div>`;
+    }
+  }
+
   /* ---------------- HOME LISTS ---------------- */
   async loadHomeLists() {
     const all = await (storage.getActiveDocuments?.() || storage.getDocuments?.() || []);
@@ -553,23 +610,11 @@ class App {
     document.getElementById('btn-clear-note')?.addEventListener('click', () => { const t = document.getElementById('quick-note'); if (t) t.value=''; });
     document.getElementById('btn-open-library')?.addEventListener('click', () => this.openLibraryDrawer());
     document.getElementById('open-lib-mini')?.addEventListener('click', (e) => { e.preventDefault(); this.openLibraryDrawer(); });
-    document.getElementById('view-all')?.addEventListener('click', (e) => { e.preventDefault(); this.openLibraryDrawer(); });
+    document.getElementById('view-all')?.addEventListener('click', (e) => { e.preventDefault(); location.href='notes.html'; });
 
-    // Search → open Notes page with ?q=
-    const sb = document.getElementById('search-btn');
-    const si = document.getElementById('search-input');
-    const runSearch = () => {
-      const q = (si?.value || '').trim();
-      if (!q) return;
-      location.href = `notes.html?q=${encodeURIComponent(q)}`;
-    };
-    sb?.addEventListener('click', runSearch);
-    si?.addEventListener('keypress', (e)=>{ if(e.key==='Enter') runSearch(); });
-
-    // Template buttons → create a real note
-    document.querySelectorAll('[data-template]').forEach(btn=>{
-      btn.addEventListener('click', ()=> this.createFromTemplate(btn.getAttribute('data-template')));
-    });
+    // Home cards:
+    document.getElementById('home-import')?.addEventListener('click', ()=> this.importMenu());
+    document.getElementById('btn-next-highlight')?.addEventListener('click', ()=> this.renderRandomHighlight());
   }
 }
 
