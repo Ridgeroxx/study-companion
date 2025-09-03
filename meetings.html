@@ -2,29 +2,22 @@
 <html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Meetings • Study Companion</title>
 
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E" />
-
-  <!-- CSS libs -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
-
-  <!-- App styles -->
-  <link rel="stylesheet" href="styles/base.css">
-  <link rel="stylesheet" href="styles/dark.css">
-
-  <!-- PWA -->
+  <!-- PWA / theme -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#136FF2">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#136FF2">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1324">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="icons/logo.png">
 
-  <!-- CSP: allow CDNs for CSS/fonts so icons actually load -->
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E" />
+
+  <!-- CSP -->
   <meta http-equiv="Content-Security-Policy"
     content="
       default-src 'self';
@@ -40,7 +33,15 @@
       upgrade-insecure-requests;
     ">
 
-  <!-- Vendor core (BEFORE any module that uses them) -->
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- App styles (optional) -->
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/dark.css">
+
+  <!-- Vendor core (BEFORE modules) -->
   <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
@@ -58,25 +59,46 @@
   <script>window.activity=window.activity||{logDocOpened(){},logDocImported(){},logNote(){},log(){}};</script>
 
   <style>
+    /* Compat */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
     :root{ --nav-h:56px; --side-w:280px; --right-w:380px; }
+
     html, body { height:100% }
-    body { overflow:hidden; background: var(--bs-body-bg); }
+    body { overflow:hidden; background: var(--bs-body-bg); margin:0; }
+
+    /* Topbar (3D, consistent shell) */
+    .nav-3d{
+      position: sticky; top: 0; z-index: 1030;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      min-height: var(--nav-h);
+    }
+    [data-bs-theme="dark"] .nav-3d{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-color: rgba(255,255,255,.14);
+    }
+    .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; font-weight:800; letter-spacing:.2px; }
+    .brand img { width:28px; height:28px; border-radius:6px; }
+
     .shell{ display:grid; grid-template-columns: var(--side-w) 1fr var(--right-w); grid-template-rows: var(--nav-h) 1fr; height:100vh; }
     .shell > nav{ grid-column:1 / -1; }
     .sidebar{ border-right:1px solid #e9ecef; background: var(--bs-body-bg); overflow:auto; }
     .center{ overflow:auto; }
     .rightbar{ border-left:1px solid #e9ecef; background: linear-gradient(180deg, rgba(13,110,253,.04), rgba(13,110,253,.02)); overflow:auto; }
+
     .side-title{ font-size:.75rem; letter-spacing:.4px; text-transform:uppercase; color:#6c757d; padding:.5rem .75rem; }
     .side-list .row-item{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.45rem .75rem; border-radius:8px; }
     .side-list .row-item:hover{ background: rgba(0,0,0,.03); }
-    .hero{ border:1px solid #e9ecef; background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.62)); backdrop-filter: blur(6px); border-radius:16px; padding:22px; box-shadow: 0 6px 28px rgba(13,110,253,.08); }
+    .hero{ border:1px solid #e9ecef; background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.62)); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius:16px; padding:22px; box-shadow: 0 6px 28px rgba(13,110,253,.08); }
     .section-title{ font-weight:700; letter-spacing:.2px; }
     .note-item{ border:1px solid #e9ecef; border-radius:10px; padding:.75rem; margin-bottom:.5rem; background:#fff; }
     [data-bs-theme="dark"] .note-item{ background:#161616; border-color: rgba(255,255,255,.14); }
     .sf-item{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.35rem .5rem; border-radius:8px;}
     .sf-item:hover{ background: rgba(0,0,0,.03); }
 
-    /* Neater links/buttons — remove accidental underlines */
+    /* Neater links/buttons */
     a, a:hover, a:focus { text-decoration: none; }
     .btn { text-decoration: none !important; }
     .side-list a, .hero a, .navbar a { text-decoration: none !important; }
@@ -84,6 +106,29 @@
     /* Preview bg consistency */
     #markdown-preview { background: var(--bs-body-bg); }
     [data-bs-theme="dark"] #markdown-preview { background: #121212; }
+
+    /* Bottom nav */
+    .bottom-nav{
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+      display:flex; z-index: 1040;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.82);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-bs-theme="dark"] .bottom-nav{
+      background: rgba(0,0,0,.35);
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .bottom-nav a{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; font-size:12px; text-decoration:none; color:inherit; opacity:.85;
+    }
+    .bottom-nav a .fa-solid{ font-size:18px; }
+    .bottom-nav a.active{ font-weight:700; opacity:1; }
+
+    /* Avoid overlap with bottom nav (mobile) */
+    .with-bottom-nav { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
     @media (max-width: 991.98px) {
       body { overflow:auto; }
@@ -97,36 +142,55 @@
       .rightbar { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #e9ecef; }
     }
   </style>
+
+  <!-- set theme ASAP -->
+  <script>
+    (function(){
+      try {
+        const init = localStorage.getItem('app_theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', init);
+      } catch {}
+    })();
+  </script>
 </head>
 <body>
   <div class="shell">
     <!-- Top bar -->
-    <nav class="navbar bg-light border-bottom">
+    <nav class="navbar nav-3d">
       <div class="container-fluid">
         <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sideDrawer" aria-label="Menu">
-            <i class="fa-solid fa-bars"></i>
+          <button class="btn btn-sm btn-outline-secondary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sideDrawer" aria-label="Open menu" title="Menu">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i><span class="visually-hidden">Menu</span>
           </button>
-          <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Home"><i class="fa-solid fa-house"></i></a>
-          <span id="mtg-nav-title" class="fw-semibold" data-i18n="nav_meetings">Meetings</span>
+          <a class="brand" href="app.html" aria-label="Study Companion" title="Study Companion">
+            <img src="logo.png" alt="Logo"><span>Study Companion</span>
+          </a>
+          <span id="mtg-nav-title" class="fw-semibold ms-1" data-i18n="nav_meetings">Meetings</span>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
-          <a class="btn btn-sm btn-outline-primary" href="reader.html" title="Reader"><i class="fa-solid fa-book-open"></i></a>
+          <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library" aria-label="Library"><i class="fa-solid fa-book" aria-hidden="true"></i></a>
+          <a class="btn btn-sm btn-outline-primary" href="reader.html" title="Reader" aria-label="Reader"><i class="fa-solid fa-book-open" aria-hidden="true"></i></a>
 
-          <!-- Tiny Language switcher (EN/ES) -->
+          <!-- Language -->
           <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-              <i class="fas fa-language"></i> <span id="current-language">EN</span>
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    aria-label="Change language"
+                    title="Change language">
+              <i class="fas fa-language" aria-hidden="true"></i> <span id="current-language">EN</span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="#" id="lang-en">English</a></li>
-              <li><a class="dropdown-item" href="#" id="lang-es">Español</a></li>
+            <ul class="dropdown-menu dropdown-menu-end" aria-label="Language menu">
+              <li><a class="dropdown-item" href="#" id="lang-en" title="Switch to English">English</a></li>
+              <li><a class="dropdown-item" href="#" id="lang-es" title="Cambiar a Español">Español</a></li>
             </ul>
           </div>
 
-          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
-          <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings"><i class="fas fa-gear"></i></a>
+          <!-- Theme -->
+          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+            <i class="fas fa-moon" aria-hidden="true"></i><span class="visually-hidden">Toggle theme</span>
+          </button>
+          <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings" aria-label="Settings"><i class="fas fa-gear" aria-hidden="true"></i></a>
         </div>
       </div>
     </nav>
@@ -134,40 +198,40 @@
     <!-- Left sidebar (desktop) -->
     <aside class="sidebar">
       <div class="side-title" id="mtg-continue-title" data-i18n="continue">Continue</div>
-      <div id="side-recent" class="side-list small text-muted px-2">Loading…</div>
+      <div id="side-recent" class="side-list small text-muted px-2" aria-live="polite">Loading…</div>
 
       <div class="side-title" id="mtg-fav-title" data-i18n="favorites">Favorites</div>
-      <div id="side-favorites" class="side-list small text-muted px-2">No favorites yet.</div>
+      <div id="side-favorites" class="side-list small text-muted px-2" aria-live="polite">No favorites yet.</div>
 
       <div class="side-title" id="mtg-pages-title" data-i18n="pages">Pages</div>
-      <div id="side-pages" class="side-list small text-muted px-2">Loading…</div>
+      <div id="side-pages" class="side-list small text-muted px-2" aria-live="polite">Loading…</div>
 
       <div class="side-title">Smart Folders</div>
-      <div id="side-smart" class="side-list small text-muted px-2">Loading…</div>
+      <div id="side-smart" class="side-list small text-muted px-2" aria-live="polite">Loading…</div>
     </aside>
 
     <!-- Center -->
     <main class="center">
-      <div class="container-fluid py-3">
+      <div class="container-fluid py-3 with-bottom-nav">
         <div class="hero mb-3 d-flex align-items-center justify-content-between">
           <div>
             <div id="mtg-hero-title" class="fs-5 fw-bold" data-i18n="meeting_hero_title">Congregation Meetings</div>
             <div id="mtg-hero-sub" class="text-muted small" data-i18n="meeting_hero_sub">Plan midweek & weekend, and take fast notes during talks.</div>
           </div>
           <div class="d-flex gap-2">
-            <button id="btn-new-note" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#editorWrap">
-              <i class="fa-solid fa-pen-to-square me-1"></i>New Note
+            <button id="btn-new-note" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#editorWrap" title="New note" aria-label="New note">
+              <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i>New Note
             </button>
 
             <div class="btn-group">
-              <button id="btn-import-dd" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="fa-solid fa-upload me-1"></i>Import
+              <button id="btn-import-dd" class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" title="Import" aria-label="Import">
+                <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Import
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><button class="dropdown-item" type="button" id="imp-epub"><i class="fa-solid fa-book me-2"></i>EPUB</button></li>
-                <li><button class="dropdown-item" type="button" id="imp-pdf"><i class="fa-solid fa-file-pdf me-2"></i>PDF</button></li>
-                <li><button class="dropdown-item" type="button" id="imp-docx"><i class="fa-solid fa-file-word me-2"></i>Word (.docx)</button></li>
-                <li><button class="dropdown-item" type="button" id="imp-text"><i class="fa-solid fa-file-lines me-2"></i>Text</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-epub" title="Import EPUB"><i class="fa-solid fa-book me-2"></i>EPUB</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-pdf" title="Import PDF"><i class="fa-solid fa-file-pdf me-2"></i>PDF</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-docx" title="Import DOCX"><i class="fa-solid fa-file-word me-2"></i>Word (.docx)</button></li>
+                <li><button class="dropdown-item" type="button" id="imp-text" title="Import text"><i class="fa-solid fa-file-lines me-2"></i>Text</button></li>
               </ul>
             </div>
           </div>
@@ -179,18 +243,18 @@
             <div class="p-3 border rounded">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="section-title" id="mtg-midweek-title" data-i18n="midweek">Midweek</div>
-                <button id="btn-add-midweek" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('midweek')"><i class="fa-solid fa-plus"></i> Add</button>
+                <button id="btn-add-midweek" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('midweek')" title="Add midweek"><i class="fa-solid fa-plus" aria-hidden="true"></i> <span class="visually-hidden">Add midweek</span>Add</button>
               </div>
-              <div id="midweek-schedule" class="small">Loading…</div>
+              <div id="midweek-schedule" class="small" aria-live="polite">Loading…</div>
             </div>
           </div>
           <div class="col-12 col-xl-6">
             <div class="p-3 border rounded">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="section-title" id="mtg-weekend-title" data-i18n="weekend">Weekend</div>
-                <button id="btn-add-weekend" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('weekend')"><i class="fa-solid fa-plus"></i> Add</button>
+                <button id="btn-add-weekend" class="btn btn-sm btn-outline-primary" onclick="schedule.addMeetingTime('weekend')" title="Add weekend"><i class="fa-solid fa-plus" aria-hidden="true"></i> <span class="visually-hidden">Add weekend</span>Add</button>
               </div>
-              <div id="weekend-schedule" class="small">Loading…</div>
+              <div id="weekend-schedule" class="small" aria-live="polite">Loading…</div>
             </div>
           </div>
         </div>
@@ -205,51 +269,52 @@
 
             <input type="hidden" id="meeting-id"/>
 
-            <div class="row g-3">
+            <div class="row g-3" role="group" aria-label="Meeting note metadata">
               <div class="col-md-4 col-lg-3">
-                <label id="label-title" class="form-label" data-i18n="label_title">Title</label>
-                <input id="meeting-title" class="form-control" placeholder="e.g., Midweek – Talk Highlights"/>
+                <label id="label-title" class="form-label" for="meeting-title" data-i18n="label_title">Title</label>
+                <input id="meeting-title" class="form-control" placeholder="e.g., Midweek – Talk Highlights" aria-labelledby="label-title"/>
               </div>
               <div class="col-md-3 col-lg-2">
-                <label id="label-date" class="form-label" data-i18n="label_date">Date</label>
-                <input id="meeting-date" type="date" class="form-control"/>
+                <label id="label-date" class="form-label" for="meeting-date" data-i18n="label_date">Date</label>
+                <input id="meeting-date" type="date" class="form-control" aria-labelledby="label-date"/>
               </div>
               <div class="col-md-3 col-lg-2">
-                <label id="label-type" class="form-label" data-i18n="label_type">Type</label>
-                <select id="meeting-type" class="form-select">
+                <label id="label-type" class="form-label" for="meeting-type" data-i18n="label_type">Type</label>
+                <select id="meeting-type" class="form-select" aria-labelledby="label-type">
                   <option value="midweek" data-i18n="midweek">Midweek</option>
                   <option value="weekend" data-i18n="weekend">Weekend</option>
                 </select>
               </div>
               <div class="col-md-2 col-lg-2 d-flex align-items-end">
-                <button class="btn btn-outline-secondary w-100" id="btn-insert-scripture">
-                  <i class="fa-solid fa-book-bible me-1"></i> Scripture
+                <button class="btn btn-outline-secondary w-100" id="btn-insert-scripture" title="Insert scripture" aria-label="Insert scripture">
+                  <i class="fa-solid fa-book-bible me-1" aria-hidden="true"></i> Scripture
                 </button>
               </div>
             </div>
 
             <div class="mt-2">
-              <div class="d-flex flex-wrap gap-1 mb-2">
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('# ', '')">H1</button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('## ', '')">H2</button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('- ', '')"><i class="fa-solid fa-list-ul"></i></button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('- [ ] ', '')"><i class="fa-regular fa-square"></i></button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('**','**')"><b>B</b></button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('_','_')"><i>I</i></button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('> ','')"><i class="fa-solid fa-quote-left"></i></button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('\n---\n','')"><i class="fa-solid fa-grip-lines"></i></button>
+              <div class="d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Formatting toolbar">
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('# ', '')" title="Heading 1" aria-label="Heading 1">H1</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('## ', '')" title="Heading 2" aria-label="Heading 2">H2</button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('- ', '')" title="Bulleted list" aria-label="Bulleted list"><i class="fa-solid fa-list-ul" aria-hidden="true"></i><span class="visually-hidden">List</span></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('- [ ] ', '')" title="Task list" aria-label="Task list"><i class="fa-regular fa-square" aria-hidden="true"></i><span class="visually-hidden">Task</span></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('**','**')" title="Bold" aria-label="Bold"><b>B</b></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('_','_')" title="Italic" aria-label="Italic"><i>I</i></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('> ','')" title="Quote" aria-label="Quote"><i class="fa-solid fa-quote-left" aria-hidden="true"></i><span class="visually-hidden">Quote</span></button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.app?.insertMarkdown('\n---\n','')" title="Divider" aria-label="Divider"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i><span class="visually-hidden">Divider</span></button>
               </div>
 
-              <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for templates and commands."></textarea>
+              <label for="meeting-content" class="visually-hidden">Meeting note content</label>
+              <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for templates and commands." aria-label="Meeting note content"></textarea>
 
               <div class="d-flex justify-content-between align-items-center mt-2">
                 <div class="small text-muted" id="label-preview" data-i18n="preview">Preview</div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-danger" onclick="notes.deleteMeetingNote?.()"><i class="fa-regular fa-trash-can"></i></button>
-                  <button id="btn-save-note" class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()"><i class="fa-solid fa-save me-1"></i>Save</button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="notes.deleteMeetingNote?.()" title="Delete note" aria-label="Delete note"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+                  <button id="btn-save-note" class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()" title="Save note" aria-label="Save note"><i class="fa-solid fa-save me-1" aria-hidden="true"></i>Save</button>
                 </div>
               </div>
-              <div id="markdown-preview" class="border rounded p-2 bg-white small mt-1" style="min-height:80px;">Nothing yet.</div>
+              <div id="markdown-preview" class="border rounded p-2 bg-white small mt-1" style="min-height:80px;" aria-live="polite">Nothing yet.</div>
             </div>
           </div>
         </div>
@@ -260,16 +325,16 @@
             <div class="section-title" id="mtg-list-title" data-i18n="my_meeting_notes">My Meeting Notes</div>
             <div class="small text-muted" id="mtg-list-sub" data-i18n="my_meeting_notes_sub">Click any note to edit</div>
           </div>
-          <div id="meeting-notes-list" class="small text-muted">Loading…</div>
+          <div id="meeting-notes-list" class="small text-muted" aria-live="polite">Loading…</div>
         </div>
       </div>
     </main>
 
     <!-- Right column -->
-    <aside class="rightbar p-3">
+    <aside class="rightbar p-3 with-bottom-nav">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0" id="right-notes-title"><i class="fa-solid fa-sticky-note me-1"></i> Notes (quick view)</h6>
-        <button class="btn btn-sm btn-outline-primary" onclick="location.href='reader.html'"><i class="fa-solid fa-book-open"></i></button>
+        <h6 class="mb-0" id="right-notes-title"><i class="fa-solid fa-sticky-note me-1" aria-hidden="true"></i> Notes (quick view)</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="location.href='reader.html'" title="Open Reader" aria-label="Open Reader"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span class="visually-hidden">Reader</span></button>
       </div>
       <div id="right-notes" class="small text-muted">
         Create or select a document in the Reader to see “Current Book Notes” here.
@@ -278,32 +343,51 @@
   </div>
 
   <!-- Offcanvas Sidebar (mobile) -->
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="sideDrawer">
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="sideDrawer" aria-labelledby="mtg-side-title">
     <div class="offcanvas-header">
       <h5 class="offcanvas-title" id="mtg-side-title" data-i18n="menu">Menu</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+      <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
       <div class="side-title" id="mtg-continue-title-m" data-i18n="continue">Continue</div>
-      <div id="side-recent-m" class="side-list small text-muted">Loading…</div>
+      <div id="side-recent-m" class="side-list small text-muted" aria-live="polite">Loading…</div>
 
       <div class="side-title mt-2" id="mtg-fav-title-m" data-i18n="favorites">Favorites</div>
-      <div id="side-favorites-m" class="side-list small text-muted">No favorites yet.</div>
+      <div id="side-favorites-m" class="side-list small text-muted" aria-live="polite">No favorites yet.</div>
 
       <div class="side-title mt-2" id="mtg-pages-title-m" data-i18n="pages">Pages</div>
-      <div id="side-pages-m" class="side-list small text-muted">Loading…</div>
+      <div id="side-pages-m" class="side-list small text-muted" aria-live="polite">Loading…</div>
 
       <div class="side-title mt-2">Smart Folders</div>
-      <div id="side-smart-m" class="side-list small text-muted">Loading…</div>
+      <div id="side-smart-m" class="side-list small text-muted" aria-live="polite">Loading…</div>
     </div>
   </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" role="navigation" aria-label="Primary">
+    <a href="app.html" data-page="home" title="Home">
+      <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+    </a>
+    <a href="library.html" data-page="library" title="Library">
+      <i class="fa-solid fa-book" aria-hidden="true"></i><span>Library</span>
+    </a>
+    <a href="notes.html" data-page="notes" title="Notes">
+      <i class="fa-solid fa-note-sticky" aria-hidden="true"></i><span>Notes</span>
+    </a>
+    <a href="meetings.html" data-page="meetings" title="Meetings">
+      <i class="fa-solid fa-calendar" aria-hidden="true"></i><span>Meetings</span>
+    </a>
+    <a href="reader.html" data-page="reader" title="Reader">
+      <i class="fa-solid fa-grip" aria-hidden="true"></i><span>Reader</span>
+    </a>
+  </nav>
 
   <!-- Toast -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
     <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body" id="app-toast-body">Action completed.</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close toast"></button>
       </div>
     </div>
   </div>
@@ -322,11 +406,8 @@
     import { bindSlashMenu } from './js/notes/templates.js';
     import * as SS from './js/search/savedSearches.js';
 
-    /* ---------------- Tiny Language component (EN/ES toggle)
-       - toggles localStorage('app_lang')
-       - calls window.app.setLanguage if available
-       - re-applies ONLY [data-i18n] nodes (no other text touched)
-    ------------------ */
+    /* Language helpers (EN/ES) */
+    const THEME_KEY='app_theme', LANG_KEY='app_lang';
     const I18N_FALLBACK = {
       en: {
         nav_meetings: 'Meetings',
@@ -381,7 +462,7 @@
     };
 
     function getLang(){
-      return (localStorage.getItem('app_lang') === 'es') ? 'es' : 'en';
+      return (localStorage.getItem(LANG_KEY) === 'es') ? 'es' : 'en';
     }
     function getT(key){
       if (window.app?.translate){
@@ -392,52 +473,61 @@
       return I18N_FALLBACK[lang]?.[key] || I18N_FALLBACK.en[key] || null;
     }
     function applyI18N(){
-      // Update only [data-i18n] nodes
       document.querySelectorAll('[data-i18n]').forEach(el=>{
         const k = el.getAttribute('data-i18n');
         const tx = getT(k);
-        if (tx) el.textContent = tx; // if missing, keep existing text
+        if (tx) el.textContent = tx;
       });
 
-      // Buttons with icons must be rebuilt to keep icons:
+      // Buttons with icons need HTML rebuild
       const btnNew = document.getElementById('btn-new-note');
-      if (btnNew) btnNew.innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i>${getT('btn_new_note')||'New Note'}`;
+      if (btnNew) btnNew.innerHTML = `<i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i>${getT('btn_new_note')||'New Note'}`;
 
       const btnImp = document.getElementById('btn-import-dd');
-      if (btnImp) btnImp.innerHTML = `<i class="fa-solid fa-upload me-1"></i>${getT('import')||'Import'}`;
+      if (btnImp) btnImp.innerHTML = `<i class="fa-solid fa-upload me-1" aria-hidden="true"></i>${getT('import')||'Import'}`;
 
       const btnSave = document.getElementById('btn-save-note');
-      if (btnSave) btnSave.innerHTML = `<i class="fa-solid fa-save me-1"></i>${getT('btn_save')||'Save'}`;
+      if (btnSave) btnSave.innerHTML = `<i class="fa-solid fa-save me-1" aria-hidden="true"></i>${getT('btn_save')||'Save'}`;
 
       const addTxt = getT('btn_add') || 'Add';
       const am = document.getElementById('btn-add-midweek');
       const aw = document.getElementById('btn-add-weekend');
-      if (am) am.innerHTML = `<i class="fa-solid fa-plus"></i> ${addTxt}`;
-      if (aw) aw.innerHTML = `<i class="fa-solid fa-plus"></i> ${addTxt}`;
+      if (am) am.innerHTML = `<i class="fa-solid fa-plus" aria-hidden="true"></i> ${addTxt}`;
+      if (aw) aw.innerHTML = `<i class="fa-solid fa-plus" aria-hidden="true"></i> ${addTxt}`;
 
       const scr = document.getElementById('btn-insert-scripture');
-      if (scr) scr.innerHTML = `<i class="fa-solid fa-book-bible me-1"></i> ${getT('btn_scripture')||'Scripture'}`;
+      if (scr) scr.innerHTML = `<i class="fa-solid fa-book-bible me-1" aria-hidden="true"></i> ${getT('btn_scripture')||'Scripture'}`;
 
       const rnT = document.getElementById('right-notes-title');
-      if (rnT) rnT.innerHTML = `<i class="fa-solid fa-sticky-note me-1"></i> ${getT('right_notes_title')||'Notes (quick view)'}`;
+      if (rnT) rnT.innerHTML = `<i class="fa-solid fa-sticky-note me-1" aria-hidden="true"></i> ${getT('right_notes_title')||'Notes (quick view)'}`;
 
       const badge = document.getElementById('current-language');
       if (badge) badge.textContent = getLang().toUpperCase();
     }
     function setLanguage(lang){
       const target = (lang === 'es') ? 'es' : 'en';
-      localStorage.setItem('app_lang', target);
-      // Let global app (if present) also know
+      localStorage.setItem(LANG_KEY, target);
       if (window.app?.setLanguage) { try{ window.app.setLanguage(target); }catch{} }
-      // Re-apply only [data-i18n] on this page
       applyI18N();
     }
-    // Expose tiny component to window for reuse if needed
     window.meetingsLang = { setLanguage, applyI18N };
 
-    // Wire dropdown
+    // Wire language dropdown
     document.getElementById('lang-en')?.addEventListener('click', (e)=>{ e.preventDefault(); setLanguage('en'); });
     document.getElementById('lang-es')?.addEventListener('click', (e)=>{ e.preventDefault(); setLanguage('es'); });
+
+    // Theme toggle
+    document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
+      const curr=document.documentElement.getAttribute('data-bs-theme')||'light';
+      const next=curr==='light'?'dark':'light';
+      document.documentElement.setAttribute('data-bs-theme', next);
+      try{localStorage.setItem(THEME_KEY,next)}catch{}
+    });
+
+    // Bottom nav active
+    document.querySelectorAll('.bottom-nav a').forEach(a=>{
+      if (a.dataset.page === 'meetings') a.classList.add('active');
+    });
 
     /* ---------------- Toast helper ---------------- */
     const toast = (msg, type='primary') => {
@@ -488,10 +578,10 @@
         <div class="row-item">
           <div class="d-flex align-items-center gap-2 text-truncate">
             <i class="fa-solid fa-book-open text-muted"></i>
-            <span class="text-truncate">${cont.title||'(Untitled)'}</span>
+            <span class="text-truncate">${(cont.title||'(Untitled)').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="openDoc('${cont.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <button class="btn btn-outline-primary" onclick="openDoc('${cont.id}')" title="Open" aria-label="Open"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
           </div>
         </div>` : `<div class="small text-muted">Nothing yet.</div>`;
       const sRecent = document.getElementById('side-recent');
@@ -504,13 +594,13 @@
       const favDocs = active.filter(d => favIds.includes(d.id));
       const favHTML = favDocs.length ? favDocs.map(d => `
         <div class="row-item">
-          <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
+          <div class="d-flex align-items-center gap-2 text-truncate" title="${(d.title||'(Untitled)').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}">
             <i class="fa-solid fa-star text-warning"></i>
-            <span class="text-truncate">${d.title||'(Untitled)'}</span>
+            <span class="text-truncate">${(d.title||'(Untitled)').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-            <button class="btn btn-outline-warning" onclick="toggleFav('${d.id}')"><i class="fa-solid fa-star"></i></button>
+            <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')" title="Open" aria-label="Open"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
+            <button class="btn btn-outline-warning" onclick="toggleFav('${d.id}')" title="Unfavorite" aria-label="Unfavorite"><i class="fa-solid fa-star" aria-hidden="true"></i></button>
           </div>
         </div>`).join('') : `<div class="small text-muted">No favorites yet.</div>`;
       const favBox = document.getElementById('side-favorites');
@@ -523,14 +613,14 @@
         .sort((a,b)=>(a.title||'').localeCompare(b.title||''))  
         .map(d => `
           <div class="row-item">
-            <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
+            <div class="d-flex align-items-center gap-2 text-truncate" title="${(d.title||'(Untitled)').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}">
               <i class="fa-regular fa-file-lines text-muted"></i>
-              <span class="text-truncate">${d.title||'(Untitled)'}</span>
+              <span class="text-truncate">${(d.title||'(Untitled)').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span>
             </div>
             <div class="side-actions btn-group btn-group-sm">
-              <button class="btn btn-outline-warning" title="Favorite" onclick="toggleFav('${d.id}')"><i class="fa-regular fa-star"></i></button>
-              <button class="btn btn-outline-primary" title="Open" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-              <button class="btn btn-outline-danger" title="Trash" onclick="softDeleteDoc('${d.id}')"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn btn-outline-warning" title="Favorite" aria-label="Favorite" onclick="toggleFav('${d.id}')"><i class="fa-regular fa-star" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-primary" title="Open" aria-label="Open" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-danger" title="Trash" aria-label="Move to Trash" onclick="softDeleteDoc('${d.id}')"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
             </div>
           </div>`).join('') || `<div class="small text-muted">No pages yet.</div>`;
       const sPages = document.getElementById('side-pages');
@@ -543,8 +633,8 @@
       const smartHTML = smartList.length
         ? smartList.map(i=>`
           <div class="sf-item">
-            <div class="text-truncate" title="${(i.title||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}">${i.title||''}</div>
-            <a class="btn btn-sm btn-outline-primary" href="notes.html" title="Open in Notes"><i class="fa-regular fa-folder-open"></i></a>
+            <div class="text-truncate" title="${(i.title||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}">${(i.title||'')}</div>
+            <a class="btn btn-sm btn-outline-primary" href="notes.html" title="Open in Notes" aria-label="Open in Notes"><i class="fa-regular fa-folder-open" aria-hidden="true"></i></a>
           </div>`).join('')
         : `<div class="small text-muted">No smart folders yet.</div>`;
       const sSmart = document.getElementById('side-smart');
@@ -579,13 +669,13 @@
         .map(n => `
           <div class="note-item" data-id="${n.id}">
             <div class="d-flex justify-content-between">
-              <div class="fw-semibold">${(n.title || 'Untitled')} <span class="badge text-bg-light ms-1">${n.type||'-'}</span></div>
+              <div class="fw-semibold">${(n.title || 'Untitled').replace(/[&<>]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]))} <span class="badge text-bg-light ms-1">${n.type||'-'}</span></div>
               <div class="small text-muted">${new Date(n.updatedAt||n.createdAt).toLocaleString()}</div>
             </div>
             <div class="small mt-1">${(n.content||'').replace(/[<>&]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]))}</div>
             <div class="d-flex gap-2 mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="editMeeting('${n.id}')"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
-              <button class="btn btn-sm btn-outline-danger" onclick="delMeeting('${n.id}')"><i class="fa-regular fa-trash-can"></i></button>
+              <button class="btn btn-sm btn-outline-primary" onclick="editMeeting('${n.id}')" title="Edit"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i> <span class="visually-hidden">Edit</span>Edit</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="delMeeting('${n.id}')" title="Delete" aria-label="Delete"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
             </div>
           </div>
         `).join('');
@@ -594,21 +684,22 @@
       const all = await (storage.getMeetingNotes?.() || []);
       const n = all.find(x=>x.id===id); if(!n) return;
       document.getElementById('editorWrap')?.classList.add('show');
-      idEl.value = n.id;
-      titleEl.value = n.title || '';
-      dateEl.value  = (n.date||'').slice(0,10);
-      typeEl.value  = n.type || 'midweek';
-      contentEl.value = n.content || '';
-      renderPrev();
+      document.getElementById('meeting-id').value = n.id;
+      document.getElementById('meeting-title').value = n.title || '';
+      document.getElementById('meeting-date').value  = (n.date||'').slice(0,10);
+      document.getElementById('meeting-type').value  = n.type || 'midweek';
+      document.getElementById('meeting-content').value = n.content || '';
+      const evt = new Event('input'); document.getElementById('meeting-content').dispatchEvent(evt);
     };
     window.delMeeting = async (id) => {
       if (!confirm('Delete this note?')) return;
       await storage.deleteMeetingNote?.(id);
       loadMeetingNotes();
       toast('Deleted','danger');
+      const idEl = document.getElementById('meeting-id');
       if (idEl.value === id){
-        idEl.value=''; titleEl.value=''; contentEl.value='';
-        renderPrev();
+        idEl.value=''; document.getElementById('meeting-title').value=''; document.getElementById('meeting-content').value='';
+        const evt = new Event('input'); document.getElementById('meeting-content').dispatchEvent(evt);
       }
     };
 
@@ -619,27 +710,17 @@
       await loadSidebar();
       await loadMeetingNotes();
 
-      // Apply i18n after app.js binds window.app (small delay)
-      await new Promise(r => setTimeout(r, 120));
-      applyI18N();
+      // Apply i18n after app.js initializes
+      setTimeout(applyI18N, 120);
 
-      // Handle deep links: #note=<id> (open created note) or legacy #template=<id> (create then open)
-      const hash = location.hash.replace(/^#/, '');
-      if (hash) {
-        const p = new URLSearchParams(hash);
-        const noteId = p.get('note');
-        const tplId  = p.get('template');
-        if (noteId) {
-          window.editMeeting?.(noteId);
-          document.getElementById('editorWrap')?.classList.add('show');
-        } else if (tplId) {
-          if (window.app?.createFromTemplate) {
-            await window.app.createFromTemplate(tplId);
-          } else {
-            titleEl.value = (tplId.charAt(0).toUpperCase()+tplId.slice(1)) + ' Note';
-          }
-        }
-      }
+      // Bottom nav active (safety)
+      document.querySelectorAll('.bottom-nav a').forEach(a=>{ if (a.dataset.page === 'meetings') a.classList.add('active'); });
+
+      // Set initial language badge
+      try {
+        const initLang = (localStorage.getItem(LANG_KEY) || 'EN').toUpperCase();
+        const langEl = document.getElementById('current-language'); if (langEl) langEl.textContent = initLang;
+      } catch {}
     })();
   </script>
 </body>

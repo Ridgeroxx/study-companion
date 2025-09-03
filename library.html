@@ -2,10 +2,16 @@
 <html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Library • Study Companion</title>
 
-  <!-- Favicon (stops 404s) -->
+  <!-- PWA / theme color (light/dark aware) -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#136FF2">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1324">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- App icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Ctext y='1em' font-size='96'%3E📚%3C/text%3E%3C/svg%3E" />
 
   <!-- Bootstrap + Icons -->
@@ -16,19 +22,59 @@
   <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
 
   <style>
+    /* Compat */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    :root { --topbar-h: 56px; }
+
     body{
+      margin:0;
       background:
         radial-gradient(1200px 600px at -10% -20%, rgba(13,110,253,.06), transparent),
         radial-gradient(1000px 500px at 110% 120%, rgba(102,16,242,.06), transparent);
       background-color: var(--bs-body-bg);
     }
 
-    .toolbar{
-      gap:.5rem; flex-wrap:wrap
+    /* Topbar */
+    .nav-3d{
+      position: sticky; top: 0; z-index: 1030;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      min-height: var(--topbar-h);
     }
-    .toolbar .form-control, .toolbar .form-select{
-      min-width: 220px;
+    [data-bs-theme="dark"] .nav-3d{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-color: rgba(255,255,255,.14);
     }
+    .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; font-weight:800; letter-spacing:.2px; }
+    .brand img { width:28px; height:28px; border-radius:6px; }
+
+    /* Bottom nav */
+    .bottom-nav{
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+      display:flex; z-index: 1040;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.82);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-bs-theme="dark"] .bottom-nav{
+      background: rgba(0,0,0,.35);
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .bottom-nav a{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; font-size:12px; text-decoration:none; color:inherit; opacity:.85;
+    }
+    .bottom-nav a .fa-solid{ font-size:18px; }
+    .bottom-nav a.active{ font-weight:700; opacity:1; }
+
+    /* Content spacing to avoid overlapping bottom nav */
+    .with-bottom-nav { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+    /* Page-specific */
+    .toolbar{ gap:.5rem; flex-wrap:wrap }
+    .toolbar .form-control, .toolbar .form-select{ min-width: 220px; }
 
     .dropzone{
       display:none;
@@ -37,7 +83,7 @@
       padding:1rem;
       text-align:center;
       color:#0a58ca;
-      background: #f8fbff;
+      background:#f8fbff;
       margin-bottom: 1rem;
     }
     .dropzone.active{
@@ -63,35 +109,75 @@
     .pill{ padding:.15rem .5rem; border-radius:999px; border:1px solid rgba(13,110,253,.25); }
     [data-bs-theme="dark"] .pill{ border-color:rgba(255,255,255,.2) }
   </style>
+
+  <!-- set theme ASAP -->
+  <script>
+    (function(){
+      try {
+        const init = localStorage.getItem('app_theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', init);
+      } catch {}
+    })();
+  </script>
 </head>
 <body>
-  <nav class="navbar bg-light border-bottom">
+
+  <!-- Topbar: logo left, language + theme right -->
+  <nav class="navbar nav-3d">
     <div class="container-fluid">
+      <a class="brand" href="app.html" aria-label="Study Companion" title="Study Companion">
+        <img src="logo.png" alt="Logo"><span>Study Companion</span>
+      </a>
       <div class="d-flex align-items-center gap-2">
-        <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Back"><i class="fa-solid fa-arrow-left"></i></a>
-        <strong>Library</strong>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-primary" id="btn-import"><i class="fa-solid fa-upload me-1"></i>Import</button>
+        <!-- Language -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Change language"
+                  title="Change language">
+            <i class="fa-solid fa-language me-1" aria-hidden="true"></i>
+            <span id="current-language">EN</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-label="Language menu">
+            <li><button id="lang-en" class="dropdown-item" title="Switch to English">English</button></li>
+            <li><button id="lang-es" class="dropdown-item" title="Cambiar a Español">Español</button></li>
+          </ul>
+        </div>
+        <!-- Theme -->
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle"
+                aria-label="Toggle theme" title="Toggle theme">
+          <i class="fa-solid fa-moon" aria-hidden="true"></i>
+          <span class="visually-hidden">Toggle theme</span>
+        </button>
       </div>
     </div>
   </nav>
 
-  <main class="container my-3">
+  <main class="container my-3 with-bottom-nav">
     <!-- Toolbar -->
-    <div class="d-flex toolbar mb-3">
-      <input id="q" class="form-control" placeholder="Search by title or type…"/>
-      <select id="sort" class="form-select" aria-label="Sort">
+    <div class="d-flex toolbar mb-3" role="search" aria-label="Library search and sort">
+      <label for="q" class="visually-hidden">Search library</label>
+      <input id="q" class="form-control" placeholder="Search by title or type…" aria-label="Search library"/>
+
+      <label for="sort" class="visually-hidden">Sort library</label>
+      <select id="sort" class="form-select" aria-label="Sort library">
         <option value="recent" selected>Sort: Recent</option>
         <option value="title">Sort: Title (A→Z)</option>
         <option value="type">Sort: Type</option>
       </select>
-      <span class="pill small text-muted ms-auto" id="stats">—</span>
+
+      <button class="btn btn-sm btn-primary ms-auto" id="btn-import" title="Import documents" aria-label="Import documents">
+        <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Import
+      </button>
+
+      <span class="pill small text-muted" id="stats" aria-live="polite">—</span>
     </div>
 
     <!-- Drag & drop zone (appears only when dragging files) -->
-    <div id="dropzone" class="dropzone">
-      <i class="fa-solid fa-cloud-arrow-up me-1"></i> Drop files to import (EPUB, PDF, DOCX, TXT, MD)
+    <div id="dropzone" class="dropzone" role="region" aria-label="Drop files to import">
+      <i class="fa-solid fa-cloud-arrow-up me-1" aria-hidden="true"></i>
+      Drop files to import (EPUB, PDF, DOCX, TXT, MD)
     </div>
 
     <div id="lib-favorites"></div>
@@ -101,12 +187,31 @@
     <div id="lib-trash"></div>
   </main>
 
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" role="navigation" aria-label="Primary">
+    <a href="app.html" data-page="home" title="Home">
+      <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+    </a>
+    <a href="library.html" data-page="library" title="Library">
+      <i class="fa-solid fa-book" aria-hidden="true"></i><span>Library</span>
+    </a>
+    <a href="notes.html" data-page="notes" title="Notes">
+      <i class="fa-solid fa-note-sticky" aria-hidden="true"></i><span>Notes</span>
+    </a>
+    <a href="meetings.html" data-page="meetings" title="Meetings">
+      <i class="fa-solid fa-calendar" aria-hidden="true"></i><span>Meetings</span>
+    </a>
+    <a href="reader.html" data-page="reader" title="Reader">
+      <i class="fa-solid fa-grip" aria-hidden="true"></i><span>Reader</span>
+    </a>
+  </nav>
+
   <!-- Toast -->
   <div class="toast-container position-fixed top-0 end-0 p-3">
     <div id="toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body" id="toast-body">Done</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close toast"></button>
       </div>
     </div>
   </div>
@@ -116,6 +221,26 @@
   <script type="module">
     import { storage } from './js/storage.js';
     import { reader } from './js/reader.js'; // for import helpers
+
+    // --- theme & language ---
+    const THEME_KEY='app_theme'; const LANG_KEY='app_lang';
+    try {
+      const initLang = (localStorage.getItem(LANG_KEY) || 'EN').toUpperCase();
+      const langEl = document.getElementById('current-language'); if (langEl) langEl.textContent = initLang;
+    } catch {}
+    document.getElementById('lang-en')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'EN')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='EN'; });
+    document.getElementById('lang-es')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'ES')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='ES'; });
+    document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
+      const curr=document.documentElement.getAttribute('data-bs-theme')||'light';
+      const next=curr==='light'?'dark':'light';
+      document.documentElement.setAttribute('data-bs-theme', next);
+      try{localStorage.setItem(THEME_KEY,next)}catch{}
+    });
+
+    // --- bottom nav active ---
+    document.querySelectorAll('.bottom-nav a').forEach(a=>{
+      if (a.dataset.page === 'library') a.classList.add('active');
+    });
 
     // --- toast helper ---
     const toast = (msg, type='primary') => {
@@ -154,19 +279,27 @@
             · ${new Date(d.updatedAt || d.createdAt || Date.now()).toLocaleString()}
           </div>
         </div>
-        <div class="btn-group btn-group-sm">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Item actions">
           ${
             opts.trashed
             ? `
-              <button class="btn btn-outline-secondary" data-restore="${d.id}" title="Restore"><i class="fa-solid fa-rotate-left"></i></button>
-              <button class="btn btn-outline-danger" data-harddel="${d.id}" title="Delete forever"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn btn-outline-secondary" data-restore="${d.id}" title="Restore" aria-label="Restore">
+                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+              </button>
+              <button class="btn btn-outline-danger" data-harddel="${d.id}" title="Delete forever" aria-label="Delete forever">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
             `
             : `
-              <button class="btn btn-outline-primary" data-open="${d.id}" title="Open"><i class="fa-solid fa-folder-open"></i></button>
-              <button class="btn btn-outline-warning" data-fav="${d.id}" title="${opts.isFav?'Unfavorite':'Favorite'}">
-                <i class="fa${opts.isFav?'s':'-regular'} fa-star"></i>
+              <button class="btn btn-outline-primary" data-open="${d.id}" title="Open" aria-label="Open">
+                <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
               </button>
-              <button class="btn btn-outline-danger" data-softdel="${d.id}" title="Move to Trash"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn btn-outline-warning" data-fav="${d.id}" title="${opts.isFav?'Unfavorite':'Favorite'}" aria-label="${opts.isFav?'Unfavorite':'Favorite'}">
+                <i class="fa${opts.isFav?'s':'-regular'} fa-star" aria-hidden="true"></i>
+              </button>
+              <button class="btn btn-outline-danger" data-softdel="${d.id}" title="Move to Trash" aria-label="Move to Trash">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
             `
           }
         </div>

@@ -2,13 +2,15 @@
 <html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Study Companion — Home</title>
 
   <!-- PWA / Icons -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="application-name" content="Study Companion">
-  <meta name="theme-color" content="#0d6efd">
+  <!-- Media-aware theme colors -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0d6efd">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1324">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -33,7 +35,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
-  <!-- Vendor core for your ecosystem -->
+  <!-- Vendor core -->
   <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
@@ -42,8 +44,11 @@
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- 3D look & layout -->
+  <!-- Styles -->
   <style>
+    /* Compatibility */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
     :root{
       --radius: 16px;
       --card-bg: var(--bs-body-bg);
@@ -59,9 +64,10 @@
         linear-gradient(180deg, var(--bs-body-bg), var(--bs-body-bg));
     }
 
-    /* Nav */
+    /* Topbar */
     .nav-3d{
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
       border-bottom: 1px solid rgba(0,0,0,.06);
     }
@@ -69,6 +75,36 @@
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
       border-color: rgba(255,255,255,.14);
     }
+    .brand {
+      display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; font-weight:800;
+      letter-spacing:.2px;
+    }
+    .brand img { width:28px; height:28px; border-radius:6px; }
+    .brand span { font-size: 16px; }
+
+    /* Bottom nav */
+    .bottom-nav{
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+      display:flex; z-index: 1040;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.82);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-bs-theme="dark"] .bottom-nav{
+      background: rgba(0,0,0,.35);
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .bottom-nav a{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; font-size:12px; text-decoration:none; color:inherit; opacity:.85;
+    }
+    .bottom-nav a .fa-solid{ font-size:18px; }
+    .bottom-nav a.active{ font-weight:700; opacity:1; }
+
+    /* Content spacing to avoid overlap with bottom nav (includes safe area) */
+    .with-bottom-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
     /* Panels */
     .panel-3d{
@@ -123,40 +159,93 @@
     .tag-chip{ border:1px solid rgba(0,0,0,.08); border-radius:999px; padding:.25rem .6rem; font-size:.85rem; }
     [data-bs-theme="dark"] .tag-chip{ border-color: rgba(255,255,255,.14); }
 
-    /* Fade-in */
-    .fade-in{ opacity:0; transform: translateY(6px); transition: opacity .45s ease, transform .45s ease; }
-    .fade-in.show{ opacity:1; transform: translateY(0); }
+    /* Fade-in: default visible; only animate when JS adds .js */
+    .fade-in { opacity: 1; transform: none; transition: opacity .45s ease, transform .45s ease; }
+    .js .fade-in { opacity: 0; transform: translateY(6px); }
+    .js .fade-in.show { opacity: 1; transform: translateY(0); }
+
+    /* Modal tweaks */
+    .rounded-16 { border-radius: 16px; }
+    .dropzone {
+      border: 2px dashed rgba(13,110,253,.40);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      background: rgba(13,110,253,.06);
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .dropzone.dragover {
+      background: rgba(13,110,253,.12);
+      border-color: rgba(13,110,253,.70);
+    }
   </style>
+
+  <!-- Add .js class ASAP for progressive animations -->
+  <script>
+    (function(){
+      document.documentElement.classList.add('js');
+    })();
+  </script>
 </head>
 <body>
 
-  <!-- Topbar -->
+  <!-- Topbar: logo left, language + theme right -->
   <nav class="navbar nav-3d sticky-top">
     <div class="container-fluid">
       <div class="d-flex align-items-center gap-2">
-        <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings"><i class="fa-solid fa-gear"></i></a>
-        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme"><i class="fa-solid fa-moon"></i></button>
+        <a class="brand" href="app.html" aria-label="Study Companion" title="Study Companion">
+          <img src="logo.png" alt="Logo"><span>Study Companion</span>
+        </a>
       </div>
-      <div class="fw-bold">Study Companion</div>
       <div class="d-flex align-items-center gap-2">
-        <a class="btn btn-sm btn-outline-primary" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
-        <a class="btn btn-sm btn-outline-primary" href="meetings.html" title="Meetings"><i class="fa-solid fa-calendar"></i></a>
+        <!-- Language -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Change language"
+                  title="Change language">
+            <i class="fa-solid fa-language me-1" aria-hidden="true"></i>
+            <span id="current-language">EN</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-label="Language menu">
+            <li><button id="lang-en" class="dropdown-item" title="Switch to English">English</button></li>
+            <li><button id="lang-es" class="dropdown-item" title="Cambiar a Español">Español</button></li>
+          </ul>
+        </div>
+
+        <!-- Theme -->
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle"
+                aria-label="Toggle theme" title="Toggle theme">
+          <i class="fa-solid fa-moon" aria-hidden="true"></i>
+          <span class="visually-hidden">Toggle theme</span>
+        </button>
       </div>
     </div>
   </nav>
 
-  <main class="container py-3">
+  <main class="container py-3 with-bottom-nav">
 
     <!-- Quick Actions -->
     <section class="panel-3d fade-in mb-3">
       <div class="d-flex align-items-center justify-content-between">
-        <div class="section-title"><i class="fa-solid fa-rocket me-2"></i>Quick Actions</div>
+        <div class="section-title"><i class="fa-solid fa-rocket me-2" aria-hidden="true"></i>Quick Actions</div>
         <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-primary btn-sm btn-3d" id="qa-continue"><i class="fa-solid fa-forward me-1"></i>Continue</button>
-          <button class="btn btn-outline-primary btn-sm" id="qa-import"><i class="fa-solid fa-upload me-1"></i>Import</button>
-          <a class="btn btn-outline-primary btn-sm" href="meetings.html"><i class="fa-solid fa-pen-to-square me-1"></i>Editor</a>
-          <a class="btn btn-outline-secondary btn-sm" href="notes.html"><i class="fa-regular fa-note-sticky me-1"></i>All Notes</a>
-          <button class="btn btn-outline-secondary btn-sm" id="qa-library"><i class="fa-solid fa-books me-1"></i>Library</button>
+          <button class="btn btn-primary btn-sm btn-3d" id="qa-continue" aria-label="Continue reading" title="Continue reading">
+            <i class="fa-solid fa-forward me-1" aria-hidden="true"></i>Continue
+          </button>
+          <button class="btn btn-outline-primary btn-sm" id="qa-import" aria-label="Import documents" title="Import documents">
+            <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Import
+          </button>
+          <a class="btn btn-outline-primary btn-sm" href="notes.html" title="Open editor">
+            <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i>Editor
+          </a>
+          <a class="btn btn-outline-secondary btn-sm" href="notes.html" title="Open all notes">
+            <i class="fa-regular fa-note-sticky me-1" aria-hidden="true"></i>All Notes
+          </a>
+          <a class="btn btn-outline-secondary btn-sm" id="qa-library" href="library.html" title="Open library">
+            <i class="fa-solid fa-book me-1" aria-hidden="true"></i>Library
+          </a>
         </div>
       </div>
     </section>
@@ -164,12 +253,14 @@
     <!-- Study Planner (Kanban) -->
     <section class="panel-3d fade-in mb-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
-        <div class="section-title"><i class="fa-regular fa-calendar-check me-2"></i>Study Planner</div>
+        <div class="section-title"><i class="fa-regular fa-calendar-check me-2" aria-hidden="true"></i>Study Planner</div>
         <div class="d-flex gap-2">
-          <button class="btn btn-primary btn-sm btn-3d" data-bs-toggle="modal" data-bs-target="#plannerModal"><i class="fa-solid fa-plus me-1"></i>Add</button>
-          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-today">Today</button>
-          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-week">This Week</button>
-          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-all">All</button>
+          <button class="btn btn-primary btn-sm btn-3d" data-bs-toggle="modal" data-bs-target="#plannerModal" title="Add task">
+            <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Add
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-today" title="Show today">Today</button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-week" title="Show this week">This Week</button>
+          <button class="btn btn-outline-secondary btn-sm" id="planner-filter-all" title="Show all">All</button>
         </div>
       </div>
       <div id="planner-kanban" class="kanban">
@@ -188,38 +279,49 @@
       </div>
     </section>
 
-    <!-- Upcoming Timeline + Focus Timer + Stats -->
+    <!-- Upcoming + Focus Timer + Stats -->
     <div class="row g-3">
       <div class="col-12 col-xl-6">
         <section class="panel-3d fade-in h-100">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="section-title"><i class="fa-regular fa-bell me-2"></i>Upcoming</div>
-            <button class="btn btn-sm btn-outline-primary" id="btn-enable-notifs"><i class="fa-regular fa-circle-check me-1"></i>Enable alerts</button>
+            <div class="section-title"><i class="fa-regular fa-bell me-2" aria-hidden="true"></i>Upcoming</div>
+            <button class="btn btn-sm btn-outline-primary" id="btn-enable-notifs" title="Enable alerts">
+              <i class="fa-regular fa-circle-check me-1" aria-hidden="true"></i>Enable alerts
+            </button>
           </div>
           <div id="upcoming-list" class="small text-muted">Loading…</div>
         </section>
       </div>
       <div class="col-12 col-md-6 col-xl-3">
         <section class="panel-3d fade-in h-100">
-          <div class="section-title mb-2"><i class="fa-regular fa-hourglass-half me-2"></i>Focus Timer</div>
+          <div class="section-title mb-2"><i class="fa-regular fa-hourglass-half me-2" aria-hidden="true"></i>Focus Timer</div>
           <div id="ftimer">
-            <div class="display-5 text-center" id="ft-time">25:00</div>
+            <div class="display-5 text-center" id="ft-time" aria-live="polite">25:00</div>
             <div class="d-flex justify-content-center gap-2 my-2">
-              <button class="btn btn-primary btn-sm" id="ft-start"><i class="fa-solid fa-play"></i></button>
-              <button class="btn btn-outline-secondary btn-sm" id="ft-pause"><i class="fa-solid fa-pause"></i></button>
-              <button class="btn btn-outline-danger btn-sm" id="ft-reset"><i class="fa-solid fa-rotate-left"></i></button>
+              <button class="btn btn-primary btn-sm" id="ft-start" aria-label="Start timer" title="Start">
+                <i class="fa-solid fa-play" aria-hidden="true"></i>
+                <span class="visually-hidden">Start</span>
+              </button>
+              <button class="btn btn-outline-secondary btn-sm" id="ft-pause" aria-label="Pause timer" title="Pause">
+                <i class="fa-solid fa-pause" aria-hidden="true"></i>
+                <span class="visually-hidden">Pause</span>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" id="ft-reset" aria-label="Reset timer" title="Reset">
+                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                <span class="visually-hidden">Reset</span>
+              </button>
             </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="pomodoro">Pomodoro</button>
-              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="short">Short</button>
-              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="long">Long</button>
+            <div class="d-flex gap-2" role="group" aria-label="Select timer preset">
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="pomodoro" title="Set Pomodoro">Pomodoro</button>
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="short" title="Set short break">Short break</button>
+              <button class="btn btn-outline-secondary btn-sm w-100" data-ft="long" title="Set long break">Long break</button>
             </div>
           </div>
         </section>
       </div>
       <div class="col-12 col-md-6 col-xl-3">
         <section class="panel-3d fade-in h-100">
-          <div class="section-title mb-2"><i class="fa-solid fa-chart-line me-2"></i>Stats & Streak</div>
+          <div class="section-title mb-2"><i class="fa-solid fa-chart-line me-2" aria-hidden="true"></i>Stats & Streak</div>
           <div id="stats-box" class="small">Loading…</div>
         </section>
       </div>
@@ -230,16 +332,16 @@
       <div class="col-12 col-lg-6">
         <section class="panel-3d fade-in h-100">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="section-title"><i class="fa-regular fa-folder-open me-2"></i>Smart Folders</div>
-            <a class="small" href="notes.html">Open Notes</a>
+            <div class="section-title"><i class="fa-regular fa-folder-open me-2" aria-hidden="true"></i>Smart Folders</div>
+            <a class="small" href="notes.html" title="Open Notes">Open Notes</a>
           </div>
-          <div id="smart-folders" class="small text-muted">Loading…</div>
+          <div id="smart-folders" class="small text-muted">No smart folders yet.</div>
         </section>
       </div>
       <div class="col-12 col-lg-6">
         <section class="panel-3d fade-in h-100">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="section-title"><i class="fa-solid fa-tags me-2"></i>Tags</div>
+            <div class="section-title"><i class="fa-solid fa-tags me-2" aria-hidden="true"></i>Tags</div>
             <div class="small text-muted">From recent highlights</div>
           </div>
           <div id="tag-cloud" class="tag-cloud small text-muted">Loading…</div>
@@ -250,7 +352,7 @@
     <!-- Masonry Highlights -->
     <section class="panel-3d fade-in my-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
-        <div class="section-title"><i class="fa-regular fa-highlighter me-2"></i>Masonry Highlights</div>
+        <div class="section-title"><i class="fa-regular fa-highlighter me-2" aria-hidden="true"></i>Masonry Highlights</div>
         <div class="small text-muted">Your recent quotes & notes</div>
       </div>
       <div id="masonry" class="masonry"></div>
@@ -259,66 +361,70 @@
     <!-- Quick Capture -->
     <section class="panel-3d fade-in mb-3">
       <div class="d-flex align-items-center justify-content-between">
-        <div class="section-title"><i class="fa-regular fa-note-sticky me-2"></i>Quick Capture</div>
+        <div class="section-title"><i class="fa-regular fa-note-sticky me-2" aria-hidden="true"></i>Quick Capture</div>
         <div>
-          <button class="btn btn-sm btn-outline-secondary" id="qc-clear">Clear</button>
-          <button class="btn btn-sm btn-primary" id="qc-save"><i class="fa-solid fa-save me-1"></i>Save</button>
+          <button class="btn btn-sm btn-outline-secondary" id="qc-clear" title="Clear note">Clear</button>
+          <button class="btn btn-sm btn-primary" id="qc-save" title="Save note">
+            <i class="fa-solid fa-save me-1" aria-hidden="true"></i>Save
+          </button>
         </div>
       </div>
+      <label for="qc-text" class="visually-hidden">Quick capture</label>
       <textarea id="qc-text" class="form-control mt-2" rows="3" placeholder="Write a quick thought…"></textarea>
     </section>
 
   </main>
 
-  <!-- Add Planner Modal -->
-  <div class="modal fade" id="plannerModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Add Planner Item</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" role="navigation" aria-label="Primary">
+    <a href="app.html" data-page="home" title="Home">
+      <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+    </a>
+    <a href="library.html" data-page="library" title="Library">
+      <i class="fa-solid fa-book" aria-hidden="true"></i><span>Library</span>
+    </a>
+    <a href="notes.html" data-page="notes" title="Notes">
+      <i class="fa-solid fa-note-sticky" aria-hidden="true"></i><span>Notes</span>
+    </a>
+    <a href="meetings.html" data-page="meetings" title="Meetings">
+      <i class="fa-solid fa-calendar" aria-hidden="true"></i><span>Meetings</span>
+    </a>
+    <a href="reader.html" data-page="reader" title="Reader">
+      <i class="fa-solid fa-grip" aria-hidden="true"></i><span>Reader</span>
+    </a>
+  </nav>
+
+  <!-- Import Modal -->
+  <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-16">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalTitle"><i class="fa-solid fa-upload me-2" aria-hidden="true"></i>Import documents</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close import dialog" title="Close"></button>
+        </div>
+
         <div class="modal-body">
-          <div class="row g-2">
-            <div class="col-12">
-              <label class="form-label">Title</label>
-              <input id="pl-title" class="form-control" placeholder="e.g., Study Chapter 3">
-            </div>
-            <div class="col-6">
-              <label class="form-label">Date</label>
-              <input id="pl-date" type="date" class="form-control">
-            </div>
-            <div class="col-6">
-              <label class="form-label">Time</label>
-              <input id="pl-time" type="time" class="form-control">
-            </div>
-            <div class="col-12">
-              <label class="form-label">Type</label>
-              <select id="pl-type" class="form-select">
-                <option value="study">Study</option>
-                <option value="meeting">Meeting</option>
-                <option value="review">Review</option>
-                <option value="task">Task</option>
-              </select>
-            </div>
-            <div class="col-12">
-              <div class="form-check">
-                <input id="pl-remind" class="form-check-input" type="checkbox" checked>
-                <label class="form-check-label" for="pl-remind">Remind me (day-before & at time)</label>
-              </div>
-            </div>
+          <div id="dropzone" class="dropzone" role="region" aria-label="Drag and drop files to import">
+            <div class="mb-2"><i class="fa-solid fa-cloud-arrow-up" style="font-size:30px;" aria-hidden="true"></i></div>
+            <div class="fw-semibold mb-1">Drag & drop files here</div>
+            <div class="text-muted small mb-3">EPUB, PDF, DOCX, TXT, MD</div>
+
+            <button class="btn btn-primary btn-sm" id="import-choose-btn" aria-label="Choose files to import" title="Choose files">Choose files</button>
+            <label for="import-input" class="visually-hidden">Choose files to import</label>
+            <input type="file" id="import-input" class="d-none" multiple
+                   aria-hidden="true" tabindex="-1" aria-label="Choose files to import"
+                   accept=".epub,.pdf,.docx,.txt,.md,application/epub+zip,application/pdf"/>
+          </div>
+
+          <div class="mt-3">
+            <div class="small text-muted mb-1">Recently added</div>
+            <div id="recent-imports" class="d-flex flex-wrap gap-2"></div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button id="pl-save" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Toast -->
-  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
-    <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body" id="app-toast-body">Saved.</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal" title="Close">Done</button>
+        </div>
       </div>
     </div>
   </div>
@@ -326,12 +432,105 @@
   <!-- JS libs -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Your core app (kept for ecosystem functions like import, library, etc.) -->
+  <!-- Core app -->
   <script type="module" src="js/app.js"></script>
-
-  <!-- New modules -->
   <script type="module" src="js/planner.js"></script>
   <script type="module" src="js/focusTimer.js"></script>
   <script type="module" src="js/dashboard.js"></script>
+
+  <!-- Page wiring: a11y + bottom nav active + Import modal hookups -->
+  <script>
+    (function(){
+      // 1) Reveal animations early (avoid blank screens if later code fails)
+      requestAnimationFrame(()=> document.querySelectorAll('.fade-in').forEach(el=> el.classList.add('show')));
+
+      // 2) Bottom nav active state
+      try {
+        const file = (location.pathname.split('/').pop() || 'app.html').toLowerCase();
+        const map = { 'app.html':'home','index.html':'home','library.html':'library','notes.html':'notes','meetings.html':'meetings','reader.html':'reader' };
+        const current = map[file] || '';
+        document.querySelectorAll('.bottom-nav a').forEach(a=>{ if (a.dataset.page === current) a.classList.add('active'); });
+      } catch {}
+
+      // 3) Import modal hookups (guard Bootstrap)
+      const qaBtn = document.getElementById('qa-import');
+      const modalEl = document.getElementById('importModal');
+      const BsModal = window.bootstrap && window.bootstrap.Modal;
+      const bsModal = (modalEl && BsModal) ? new BsModal(modalEl) : null;
+
+      qaBtn?.addEventListener('click', () => {
+        if (bsModal) {
+          bsModal.show();
+        } else {
+          modalEl?.classList.add('show');
+          modalEl?.setAttribute('style','display:block');
+          modalEl?.setAttribute('aria-hidden','false');
+        }
+      });
+
+      const chooseBtn = document.getElementById('import-choose-btn');
+      const input = document.getElementById('import-input');
+      chooseBtn?.addEventListener('click', () => input?.click());
+
+      const dz = document.getElementById('dropzone');
+      ['dragenter','dragover'].forEach(ev =>
+        dz?.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); })
+      );
+      ['dragleave','drop'].forEach(ev =>
+        dz?.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); })
+      );
+      dz?.addEventListener('drop', e => {
+        const files = e.dataTransfer?.files;
+        if (files?.length) handleFiles(files);
+      });
+      input?.addEventListener('change', e => {
+        const files = e.target.files;
+        if (files?.length) handleFiles(files);
+      });
+
+      const recent = document.getElementById('recent-imports');
+
+      async function handleFiles(fileList){
+        const files = Array.from(fileList);
+        for (const f of files) {
+          // visual chip
+          const ext = (f.name.split('.').pop() || '').toLowerCase();
+          const icon = ext === 'pdf' ? 'file-pdf' :
+                       ext === 'epub' ? 'book' :
+                       ext === 'docx' ? 'file-word' :
+                       ext === 'md'   ? 'file-lines' : 'file';
+          const chip = document.createElement('div');
+          chip.className = 'p-2 border rounded-3 d-flex align-items-center gap-2';
+          chip.innerHTML = `<i class="fa-solid fa-${icon}" aria-hidden="true"></i><span class="small">${f.name}</span>`;
+          recent?.prepend(chip);
+
+          // Import via existing pipeline
+          try {
+            const doc = await window.storage?.importFile?.(f);
+            window.onDocumentImported?.(doc);
+            break; // open first file immediately to avoid race
+          } catch (e) {
+            console.error(e);
+            try { window.app?.toast?.('Import failed', 'danger'); } catch {}
+          }
+        }
+      }
+
+      // 4) A11y guard: if any container is aria-hidden, make it unfocusable
+      try {
+        function syncInert(el){
+          if (el.getAttribute('aria-hidden') === 'true') el.setAttribute('inert','');
+          else el.removeAttribute('inert');
+        }
+        document.querySelectorAll('[aria-hidden]').forEach(syncInert);
+        const mo = new MutationObserver(muts=>{
+          muts.forEach(m=>{
+            if (m.type === 'attributes' && m.attributeName === 'aria-hidden') syncInert(m.target);
+          });
+        });
+        document.querySelectorAll('[aria-hidden]').forEach(el=> mo.observe(el, { attributes:true }));
+      } catch {}
+    })();
+  </script>
 </body>
 </html>

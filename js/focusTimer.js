@@ -1,61 +1,54 @@
 // js/focusTimer.js
-// Lightweight Pomodoro/Break timer with notification at end.
+const $ = s => document.querySelector(s);
+const KEY = 'focus_sessions_v1';
 
-const FT_KEY = 'focus_timer_preset';
-const DURATIONS = { pomodoro: 25*60, short: 5*60, long: 15*60 };
+let totalSec = 25*60;  // default 25 min
+let leftSec  = totalSec;
+let ticking  = null;
 
-let _mode = 'pomodoro';
-let _left = DURATIONS[_mode];
-let _tick = null;
+function fmt(s){
+  const m = Math.floor(s/60).toString().padStart(2,'0');
+  const ss = Math.floor(s%60).toString().padStart(2,'0');
+  return `${m}:${ss}`;
+}
+function show(){ const el = $('#ft-time'); if (el) el.textContent = fmt(leftSec); }
 
-function $(s){ return document.querySelector(s); }
-function fmt(s){ const m = Math.floor(s/60).toString().padStart(2,'0'); const ss=(s%60).toString().padStart(2,'0'); return `${m}:${ss}`; }
-function draw(){ const el=$('#ft-time'); if (el) el.textContent = fmt(_left); }
-
-async function notify(title, body){
-  try {
-    if (!('Notification' in window)) return;
-    if (Notification.permission !== 'granted') {
-      try { await Notification.requestPermission(); } catch {}
-    }
-    const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg && 'showNotification' in reg) return reg.showNotification(title, { body, icon:'icons/logo.png', badge:'icons/logo.png' });
-    new Notification(title, { body, icon:'icons/logo.png' });
-  } catch {}
+async function saveSession(minutes){
+  const list = (await localforage.getItem(KEY)) || [];
+  list.push({ at: Date.now(), minutes });
+  await localforage.setItem(KEY, list);
+  document.dispatchEvent(new CustomEvent('focus:updated'));
 }
 
 function start(){
-  if (_tick) return;
-  _tick = setInterval(()=>{
-    _left -= 1;
-    if (_left <= 0){
-      clearInterval(_tick); _tick=null;
-      _left = 0; draw();
-      notify('Timer complete', `Finished ${_mode}. Nice work!`);
-    } else draw();
-  }, 1000);
+  if (ticking) return;
+  const t0 = Date.now();
+  const end = t0 + leftSec*1000;
+  ticking = setInterval(()=>{
+    leftSec = Math.max(0, Math.round((end - Date.now())/1000));
+    show();
+    if (leftSec <= 0){
+      clearInterval(ticking); ticking = null;
+      saveSession(Math.round(totalSec/60));
+      const snd = new Audio();
+      try { new Notification('Focus done!', { body:'Time to take a break.' }); } catch {}
+    }
+  }, 250);
 }
-function pause(){ if (_tick){ clearInterval(_tick); _tick=null; } }
-function reset(){ pause(); _left = DURATIONS[_mode]; draw(); }
+function pause(){ if (ticking){ clearInterval(ticking); ticking = null; } }
+function reset(){ pause(); leftSec = totalSec; show(); }
 
-function setMode(m){
-  if (!DURATIONS[m]) return;
-  _mode = m; _left = DURATIONS[m]; draw();
-  try { localStorage.setItem(FT_KEY, _mode); } catch {}
-}
-
-function bind(){
-  $('#ft-start')?.addEventListener('click', start);
-  $('#ft-pause')?.addEventListener('click', pause);
-  $('#ft-reset')?.addEventListener('click', reset);
-  document.querySelectorAll('[data-ft]').forEach(btn=>{
-    btn.addEventListener('click', ()=> setMode(btn.getAttribute('data-ft')));
-  });
+function preset(kind){
+  const map = { pomodoro:25, short:5, long:15 };
+  totalSec = (map[kind]||25)*60;
+  reset();
 }
 
-(function init(){
-  const saved = localStorage.getItem(FT_KEY) || 'pomodoro';
-  setMode(saved);
-  bind();
-  draw();
-})();
+document.getElementById('ft-start')?.addEventListener('click', start);
+document.getElementById('ft-pause')?.addEventListener('click', pause);
+document.getElementById('ft-reset')?.addEventListener('click', reset);
+document.querySelectorAll('[data-ft]').forEach(btn=>{
+  btn.addEventListener('click', ()=> preset(btn.getAttribute('data-ft')));
+});
+
+show();
