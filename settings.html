@@ -1,473 +1,486 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Settings — Study Companion</title>
+
+  <!-- PWA / theme -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#136FF2">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1324">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/logo.png">
+  <link rel="icon" href="icons/logo.png">
+
+  <!-- CSP -->
+  <meta http-equiv="Content-Security-Policy"
+  content="
+    default-src 'self';
+    img-src 'self' data: blob:;
+    font-src 'self' data: https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
+    connect-src 'self' blob:;
+    worker-src 'self' blob: https://cdnjs.cloudflare.com;
+    object-src 'none';
+    base-uri 'self';
+    upgrade-insecure-requests;
+  ">
 
   <!-- CSS libs -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
-  <!-- App styles -->
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#136FF2">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="apple-touch-icon" href="icons/logo.png">
-  <link rel="stylesheet" href="styles/base.css">
-  <link rel="stylesheet" href="styles/dark.css">
-
-  <!-- CSP: allow CDNs, HTTPS endpoints for WebDAV -->
-  <meta http-equiv="Content-Security-Policy"
-    content="
-      default-src 'self';
-      img-src 'self' data: blob:;
-      font-src 'self' data: https://cdnjs.cloudflare.com;
-      style-src 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-      style-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-      script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
-      connect-src 'self' https: blob:;
-      worker-src 'self' blob: https://cdnjs.cloudflare.com;
-      object-src 'none';
-      base-uri 'self';
-      upgrade-insecure-requests;
-    ">
-
+  <!-- Styles -->
   <style>
-    .set-card{ border:1px solid #e9ecef; border-radius:12px; background:var(--bs-body-bg); }
-    .overlay-lock {
-      position:fixed; inset:0; z-index:20000;
-      display:flex; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.5); backdrop-filter: blur(6px);
+    /* Compat */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    :root { --topbar-h: 56px; }
+
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 600px at -10% -20%, rgba(13,110,253,.06), transparent),
+        radial-gradient(1000px 500px at 110% 120%, rgba(102,16,242,.06), transparent);
+      background-color: var(--bs-body-bg);
+      min-height:100vh;
     }
-    .overlay-lock .panel{
-      width:min(420px,92vw); background:var(--bs-body-bg);
-      border-radius:12px; padding:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
+
+    /* Topbar */
+    .nav-3d{
+      position: sticky; top: 0; z-index: 1030;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      min-height: var(--topbar-h);
     }
+    [data-bs-theme="dark"] .nav-3d{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-color: rgba(255,255,255,.14);
+    }
+    .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; font-weight:800; letter-spacing:.2px; }
+    .brand img { width:28px; height:28px; border-radius:6px; }
+
+    /* Bottom nav */
+    .bottom-nav{
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+      display:flex; z-index: 1040;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.82);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-bs-theme="dark"] .bottom-nav{
+      background: rgba(0,0,0,.35);
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .bottom-nav a{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; font-size:12px; text-decoration:none; color:inherit; opacity:.85;
+    }
+    .bottom-nav a .fa-solid{ font-size:18px; }
+    .bottom-nav a.active{ font-weight:700; opacity:1; }
+
+    /* Content spacing to avoid overlap with bottom nav */
+    .with-bottom-nav { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+    .cardish {
+      border:1px solid rgba(0,0,0,.06);
+      border-radius: 14px;
+      padding: 16px;
+      background: var(--bs-body-bg);
+    }
+    [data-bs-theme="dark"] .cardish { border-color: rgba(255,255,255,.12); }
+
+    .section-title { font-weight:700; letter-spacing:.2px; }
+    .small-muted { color: var(--bs-secondary-color); }
   </style>
+
+  <!-- set theme ASAP -->
+  <script>
+    (function(){
+      try {
+        const init = localStorage.getItem('app_theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', init);
+      } catch {}
+    })();
+  </script>
 </head>
 <body>
-  <nav class="navbar bg-light border-bottom sticky-top">
+  <!-- Top bar -->
+  <nav class="navbar nav-3d">
     <div class="container-fluid">
+      <a class="brand" href="app.html" aria-label="Study Companion" title="Study Companion">
+        <img src="logo.png" alt="Logo"><span>Study Companion</span>
+      </a>
       <div class="d-flex align-items-center gap-2">
-        <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Back">
-          <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <span class="fw-semibold">Settings</span>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
-        <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
-        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Theme">
-          <i class="fa-solid fa-moon"></i>
+        <!-- Language -->
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Change language"
+                  title="Change language">
+            <i class="fa-solid fa-language me-1" aria-hidden="true"></i>
+            <span id="current-language">EN</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-label="Language menu">
+            <li><button id="lang-en" class="dropdown-item" title="Switch to English">English</button></li>
+            <li><button id="lang-es" class="dropdown-item" title="Cambiar a Español">Español</button></li>
+          </ul>
+        </div>
+        <!-- Theme -->
+        <button class="btn btn-sm btn-outline-secondary" id="theme-toggle"
+                aria-label="Toggle theme" title="Toggle theme">
+          <i class="fa-solid fa-moon" aria-hidden="true"></i>
+          <span class="visually-hidden">Toggle theme</span>
         </button>
       </div>
     </div>
   </nav>
 
-  <main class="container py-3">
+  <!-- Main -->
+  <main class="container py-3 with-bottom-nav">
+    <h1 class="h5 section-title mb-3">Settings</h1>
 
-    <!-- App -->
-    <div class="set-card p-3 mb-3">
-      <h5 class="mb-3"><i class="fa-solid fa-gear me-2"></i>App</h5>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Language</label>
-          <select id="settings-language" class="form-select">
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Theme</label>
-          <select id="settings-theme" class="form-select">
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-        <div class="col-12">
-          <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" id="settings-pwa" />
-            <label class="form-check-label" for="settings-pwa">Enable offline mode (PWA)</label>
+    <div class="row g-3">
+      <!-- Language & Appearance -->
+      <div class="col-12 col-lg-6">
+        <section class="cardish">
+          <div class="section-title mb-2">Language & Appearance</div>
+
+          <div class="mb-3">
+            <label class="form-label">Language</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm" id="set-lang-en" title="Switch to English" aria-label="Switch to English">English</button>
+              <button class="btn btn-outline-secondary btn-sm" id="set-lang-es" title="Cambiar a Español" aria-label="Cambiar a Español">Español</button>
+            </div>
+            <div class="small small-muted mt-1">Affects UI labels; page content stays the same.</div>
           </div>
-        </div>
+
+          <div class="mb-2">
+            <label class="form-label">Theme</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary btn-sm" data-theme="light" title="Light theme" aria-label="Light theme">Light</button>
+              <button class="btn btn-outline-secondary btn-sm" data-theme="dark" title="Dark theme" aria-label="Dark theme">Dark</button>
+            </div>
+          </div>
+        </section>
       </div>
-      <div class="mt-3">
-        <button class="btn btn-primary" id="btn-save-settings">
-          <i class="fa-solid fa-floppy-disk me-1"></i> Save Settings
-        </button>
+
+      <!-- Data & Storage -->
+      <div class="col-12 col-lg-6">
+        <section class="cardish">
+          <div class="section-title mb-2">Data & Storage</div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-outline-primary" id="btn-export" title="Export a backup (JSON)" aria-label="Export backup">
+              <i class="fa-solid fa-download me-1" aria-hidden="true"></i>Export backup
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="btn-import" title="Import a backup (JSON)" aria-label="Import backup">
+              <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Import backup
+            </button>
+            <input id="import-input" type="file" accept="application/json,.json" class="visually-hidden" aria-hidden="true" tabindex="-1"/>
+            <button class="btn btn-sm btn-outline-danger" id="btn-clear-library" title="Delete all documents and notes" aria-label="Delete all documents and notes">
+              <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Clear library
+            </button>
+          </div>
+
+          <hr/>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="btn-clear-cache" title="Clear offline cache" aria-label="Clear offline cache">
+              <i class="fa-solid fa-broom me-1" aria-hidden="true"></i>Clear cache
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btn-reload-sw" title="Reload service worker" aria-label="Reload service worker">
+              <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Reload service worker
+            </button>
+          </div>
+
+          <div class="mt-3 small">
+            <div><strong>Storage:</strong> <span id="storage-usage">—</span></div>
+            <div><strong>App:</strong> <span id="app-name">Study Companion</span> <span id="app-version" class="text-muted"></span></div>
+          </div>
+        </section>
       </div>
-    </div>
 
-    <!-- Security -->
-    <div class="set-card p-3 mb-3">
-      <h5 class="mb-2"><i class="fa-solid fa-lock me-2"></i>Security</h5>
+      <!-- Notifications -->
+      <div class="col-12 col-lg-6">
+        <section class="cardish">
+          <div class="section-title mb-2">Notifications</div>
+          <p class="small small-muted mb-2">Enable reminders and alerts (browser permission).</p>
+          <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-primary" id="btn-notify-perm" title="Request notification permission" aria-label="Request notification permission">
+              <i class="fa-regular fa-bell me-1" aria-hidden="true"></i>Enable notifications
+            </button>
+            <span id="notify-status" class="small text-muted">Status: unknown</span>
+          </div>
+        </section>
+      </div>
 
-      <div class="row g-3">
-        <div class="col-12 col-lg-6">
-          <h6 class="mb-2">App Lock</h6>
-          <div class="row g-2">
-            <div class="col-6">
-              <label class="form-label">New PIN</label>
-              <input id="sec-pin1" type="password" inputmode="numeric" class="form-control" placeholder="1234">
-            </div>
-            <div class="col-6">
-              <label class="form-label">Confirm PIN</label>
-              <input id="sec-pin2" type="password" inputmode="numeric" class="form-control" placeholder="1234">
-            </div>
-            <div class="col-6">
-              <label class="form-label">Idle Lock (minutes)</label>
-              <input id="sec-idle" type="number" min="1" class="form-control" value="15">
-            </div>
-            <div class="col-6 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="sec-bio">
-                <label class="form-check-label" for="sec-bio">Allow biometric (WebAuthn)</label>
-              </div>
-            </div>
+      <!-- About -->
+      <div class="col-12 col-lg-6">
+        <section class="cardish">
+          <div class="section-title mb-2">About</div>
+          <div class="small">
+            Study Companion is an offline-first reader with notes, highlights, and planning tools.
           </div>
-          <div class="mt-2 d-flex flex-wrap gap-2">
-            <button class="btn btn-primary" id="sec-enable"><i class="fa-solid fa-unlock-keyhole me-1"></i>Enable Lock</button>
-            <button class="btn btn-outline-danger" id="sec-disable"><i class="fa-solid fa-ban me-1"></i>Disable Lock</button>
-            <button class="btn btn-outline-secondary" id="sec-lock-now"><i class="fa-solid fa-lock me-1"></i>Lock Now</button>
-          </div>
-          <div class="form-text mt-1">When enabled, the app locks after inactivity and on next open. “Lock Now” locks immediately.</div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-          <h6 class="mb-2">Encryption at Rest</h6>
-          <div class="row g-2">
-            <div class="col-12">
-              <label class="form-label">Passphrase</label>
-              <input id="enc-pass" type="password" class="form-control" placeholder="********">
-            </div>
-            <div class="col-12">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="enc-remember">
-                <label class="form-check-label" for="enc-remember">Remember this session</label>
-              </div>
-            </div>
-          </div>
-          <div class="mt-2 d-flex flex-wrap gap-2">
-            <button class="btn btn-primary" id="enc-enable"><i class="fa-solid fa-shield-halved me-1"></i>Enable Encryption</button>
-            <button class="btn btn-outline-secondary" id="enc-resume"><i class="fa-solid fa-key me-1"></i>Unlock Session</button>
-            <button class="btn btn-outline-danger" id="enc-disable"><i class="fa-solid fa-xmark me-1"></i>Disable</button>
-          </div>
-          <div class="form-text mt-1">Encrypted data uses AES-GCM; passphrase is not stored.</div>
-        </div>
+          <div class="small small-muted mt-1">All data is stored locally in your browser unless you export a backup.</div>
+        </section>
       </div>
     </div>
-
-    <!-- Sync (WebDAV) -->
-    <div class="set-card p-3 mb-3">
-      <h5 class="mb-2"><i class="fa-solid fa-arrows-rotate me-2"></i>Sync (Manual · WebDAV)</h5>
-      <div class="row g-2">
-        <div class="col-md-6">
-          <label class="form-label">Endpoint (base URL)</label>
-          <input id="dav-endpoint" class="form-control" placeholder="https://example.com/dav/">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Username</label>
-          <input id="dav-user" class="form-control">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Password</label>
-          <input id="dav-pass" type="password" class="form-control">
-        </div>
-        <div class="col-12">
-          <label class="form-label">Remote Path</label>
-          <input id="dav-path" class="form-control" placeholder="/StudyCompanion/bundle.json">
-        </div>
-      </div>
-      <div class="mt-2 d-flex flex-wrap gap-2">
-        <button class="btn btn-outline-secondary" id="dav-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-        <button class="btn btn-outline-secondary" id="dav-check"><i class="fa-solid fa-list-check me-1"></i>Check Remote</button>
-        <button class="btn btn-outline-primary" id="dav-download"><i class="fa-solid fa-download me-1"></i>Download</button>
-        <button class="btn btn-primary" id="dav-upload"><i class="fa-solid fa-upload me-1"></i>Upload</button>
-      </div>
-      <div class="form-text mt-1">Sync pushes/pulls your JSON bundle on demand. Offline use is never blocked.</div>
-    </div>
-
   </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" role="navigation" aria-label="Primary">
+    <a href="app.html" data-page="home" title="Home">
+      <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+    </a>
+    <a href="library.html" data-page="library" title="Library">
+      <i class="fa-solid fa-book" aria-hidden="true"></i><span>Library</span>
+    </a>
+    <a href="notes.html" data-page="notes" title="Notes">
+      <i class="fa-solid fa-note-sticky" aria-hidden="true"></i><span>Notes</span>
+    </a>
+    <a href="meetings.html" data-page="meetings" title="Meetings">
+      <i class="fa-solid fa-calendar" aria-hidden="true"></i><span>Meetings</span>
+    </a>
+    <a href="reader.html" data-page="reader" title="Reader">
+      <i class="fa-solid fa-grip" aria-hidden="true"></i><span>Reader</span>
+    </a>
+    <a href="settings.html" data-page="settings" title="Settings">
+    <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
+    </a>
+  </nav>
 
   <!-- Toast -->
   <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
     <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
-        <div class="toast-body" id="app-toast-body">Saved.</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <div class="toast-body" id="app-toast-body">Action completed.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close toast"></button>
       </div>
     </div>
   </div>
 
   <!-- Vendor core -->
-  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
 
-  <!-- Global app (theme/lang helpers etc.) -->
+  <!-- App globals -->
   <script type="module" src="js/app.js"></script>
 
-  <!-- Page logic -->
+  <!-- Page wiring -->
   <script type="module">
     import { storage } from './js/storage.js';
-    import { lock } from './js/security/lock.js';
-    import * as cryptoStore from './js/security/cryptoStore.js';
-    import * as webdav from './js/sync/webdav.js'; // namespace import avoids named-export mismatches
 
-    const $ = (s, r=document) => r.querySelector(s);
-    const toast = (msg, type='primary') => {
-      const el = $('#app-toast'), body = $('#app-toast-body');
-      if (!el || !body) { alert(msg); return; }
+    const THEME_KEY='app_theme', LANG_KEY='app_lang';
+
+    // Toast helper
+    const toast = (msg, type='primary')=>{
+      const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
+      if (!el || !body || !window.bootstrap) { console.log(msg); return; }
       body.textContent = msg;
       el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-      new bootstrap.Toast(el, { autohide:true, delay:1600 }).show();
+      new bootstrap.Toast(el, {autohide:true, delay:1600}).show();
     };
 
-    // ---------------- App settings ----------------
-    const langSel = $('#settings-language');
-    const themeSel = $('#settings-theme');
-    const pwaChk  = $('#settings-pwa');
+    // Bottom nav: no "settings" item, so don't mark anything active
 
-    async function loadSettingsIntoForm(){
-      try { await storage.init?.(); } catch {}
-      const s = await (storage.getSettings?.() || {});
-      langSel.value  = s.lang  || (localStorage.getItem('app_lang')  || 'en');
-      themeSel.value = s.theme || (localStorage.getItem('app_theme') || 'light');
-      pwaChk.checked = !!s.pwaEnabled;
-      document.documentElement.setAttribute('data-bs-theme', themeSel.value);
-    }
+    // Language dropdown (top-right)
+    try {
+      const initLang = (localStorage.getItem(LANG_KEY) || 'EN').toUpperCase();
+      const langEl = document.getElementById('current-language'); if (langEl) langEl.textContent = initLang;
+    } catch {}
 
-    async function saveSettings(){
-      const curr = await (storage.getSettings?.() || {});
-      const s = {
-        ...curr,
-        lang:  langSel.value || 'en',
-        theme: themeSel.value || 'light',
-        pwaEnabled: !!pwaChk.checked
-      };
-      await storage.saveSettings?.(s);
-      try {
-        localStorage.setItem('app_lang', s.lang);
-        localStorage.setItem('app_theme', s.theme);
-      } catch {}
-      document.documentElement.setAttribute('data-bs-theme', s.theme);
-      toast('Settings saved', 'success');
-    }
-    $('#btn-save-settings')?.addEventListener('click', saveSettings);
+    document.getElementById('lang-en')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'EN')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='EN'; });
+    document.getElementById('lang-es')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'ES')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='ES'; });
 
-    // quick top buttons
-    document.getElementById('lang-en')?.addEventListener('click', ()=>{ langSel.value='en'; saveSettings(); });
-    document.getElementById('lang-es')?.addEventListener('click', ()=>{ langSel.value='es'; saveSettings(); });
+    // Theme toggle (top-right)
     document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
-      themeSel.value = (themeSel.value === 'light') ? 'dark' : 'light';
-      saveSettings();
+      const curr=document.documentElement.getAttribute('data-bs-theme')||'light';
+      const next=curr==='light'?'dark':'light';
+      document.documentElement.setAttribute('data-bs-theme', next);
+      try{localStorage.setItem(THEME_KEY,next)}catch{}
     });
 
-    // ---------------- App Lock ----------------
-    const pin1 = $('#sec-pin1');
-    const pin2 = $('#sec-pin2');
-    const idle = $('#sec-idle');
-    const bio  = $('#sec-bio');
-
-    // Enable lock with PIN + options
-    $('#sec-enable')?.addEventListener('click', async ()=>{
-      const p1 = (pin1.value||'').trim();
-      const p2 = (pin2.value||'').trim();
-      const idleMin = Math.max(1, parseInt(idle.value||'15', 10));
-      if (!p1 || p1 !== p2) { toast('PIN mismatch', 'danger'); return; }
-      try {
-        await lock.setupPin(p1, !!bio.checked, idleMin);    // stores hash+salt+cfg.enabled=true
-        await lock.init({ idleMinutes: idleMin });          // arm idle timer on this page too
-        toast('App Lock enabled', 'success');
-        pin1.value=''; pin2.value='';
-      } catch(e){ console.error(e); toast('Failed to enable lock','danger'); }
+    // Theme buttons inside the page
+    document.querySelectorAll('[data-theme]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const theme = btn.getAttribute('data-theme');
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        try{localStorage.setItem(THEME_KEY, theme)}catch{}
+      });
     });
 
-    // Disable lock (keeps PIN stored only if your lock.js does; you can add a “Clear PIN” flow in overlay)
-    $('#sec-disable')?.addEventListener('click', async ()=>{
-      try {
-        await lock.disable();
-        toast('App Lock disabled', 'secondary');
-      } catch(e){ console.error(e); toast('Failed to disable lock','danger'); }
+    // Quick language buttons inside the page
+    document.getElementById('set-lang-en')?.addEventListener('click', ()=>{
+      try{localStorage.setItem(LANG_KEY,'EN')}catch{}
+      const el=document.getElementById('current-language'); if(el) el.textContent='EN';
+      if (window.app?.setLanguage) { try{ window.app.setLanguage('en'); } catch {} }
+      toast('Language set to English','secondary');
+    });
+    document.getElementById('set-lang-es')?.addEventListener('click', ()=>{
+      try{localStorage.setItem(LANG_KEY,'ES')}catch{}
+      const el=document.getElementById('current-language'); if(el) el.textContent='ES';
+      if (window.app?.setLanguage) { try{ window.app.setLanguage('es'); } catch {} }
+      toast('Idioma cambiado a Español','secondary');
     });
 
-    // “Lock Now”: immediate blocking overlay + set a flag so other pages will require unlock too
-    $('#sec-lock-now')?.addEventListener('click', async ()=>{
-      try {
-        // Ensure lock feature is considered enabled globally
-        const cfg = (await localforage.getItem('app_lock_cfg_v1')) || {};
-        cfg.enabled = true;
-        await localforage.setItem('app_lock_cfg_v1', cfg);
-        await localforage.setItem('app_lock_force_v1', { mustUnlock: true, at: Date.now() });
-
-        // Try to show your module’s overlay if available (future-proof)
-        if (typeof lock.lockNow === 'function') {
-          await lock.lockNow();
-          return;
+    // Storage usage
+    async function updateStorageUsage(){
+      try{
+        if (navigator.storage && navigator.storage.estimate) {
+          const {usage, quota} = await navigator.storage.estimate();
+          const fmt = x => (x/1024/1024).toFixed(1) + ' MB';
+          document.getElementById('storage-usage').textContent =
+            (usage && quota) ? `${fmt(usage)} / ${fmt(quota)} (${Math.round(usage/quota*100)}%)` : '—';
         }
-        // Fallback: local, minimal overlay that validates the same stored PIN
-        showImmediateLockOverlay();
-      } catch(e){ console.error(e); toast('Failed to lock','danger'); }
-    });
-
-    // Local immediate overlay (fallback) — verifies PIN or WebAuthn, then dismisses.
-    async function showImmediateLockOverlay(){
-      const wrap = document.createElement('div');
-      wrap.className = 'overlay-lock';
-      wrap.innerHTML = `
-        <div class="panel">
-          <h5 class="mb-2">App Locked</h5>
-          <div class="small text-muted mb-2">Enter PIN to unlock.</div>
-          <div class="input-group mb-2">
-            <input id="ol-pin" type="password" inputmode="numeric" class="form-control" placeholder="PIN">
-            <button id="ol-sub" class="btn btn-primary">Unlock</button>
-          </div>
-          <div class="d-flex gap-2">
-            <button id="ol-bio" class="btn btn-outline-secondary btn-sm" style="display:none;">Use biometric</button>
-            <button id="ol-cancel" class="btn btn-outline-danger btn-sm">Cancel</button>
-          </div>
-          <div id="ol-msg" class="small text-danger mt-2"></div>
-        </div>`;
-      document.body.appendChild(wrap);
-      document.body.style.overflow = 'hidden';
-
-      const $ol = s => wrap.querySelector(s);
-      const msg = $ol('#ol-msg');
-
-      // Biometrics available?
-      if (window.PublicKeyCredential) $ol('#ol-bio').style.display = 'inline-block';
-
-      $ol('#ol-sub').onclick = async ()=>{
-        const pin = $ol('#ol-pin').value || '';
-        const ok = await verifyPinAgainstStore(pin);
-        if (!ok) { msg.textContent = 'Incorrect PIN'; return; }
-        await localforage.setItem('app_lock_force_v1', { mustUnlock:false, at: Date.now() });
-        cleanupOverlay();
-      };
-      $ol('#ol-bio').onclick = async ()=>{
-        try{
-          await navigator.credentials.get({ publicKey:{ challenge:new Uint8Array(16), userVerification:'preferred' }});
-          await localforage.setItem('app_lock_force_v1', { mustUnlock:false, at: Date.now() });
-          cleanupOverlay();
-        }catch(e){ msg.textContent = 'Biometric failed'; }
-      };
-      $ol('#ol-cancel').onclick = ()=> cleanupOverlay();
-
-      function cleanupOverlay(){
-        document.body.style.overflow = '';
-        wrap.remove();
-      }
+      } catch {}
     }
 
-    async function verifyPinAgainstStore(pin=''){
-      try {
-        const salt = await localforage.getItem('app_pin_salt_v1');
-        const saved= await localforage.getItem('app_pin_hash_v1');
-        if (!salt || !saved) return false;
-        const hash = await sha256(pin + ':' + salt);
-        return hash === saved;
-      } catch { return false; }
-    }
-    async function sha256(s){
-      const data = new TextEncoder().encode(s);
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      return btoa(String.fromCharCode(...new Uint8Array(hash)));
-    }
-
-    // ---------------- Encryption at Rest ----------------
-    document.getElementById('enc-enable')?.addEventListener('click', async ()=>{
-      const pass = document.getElementById('enc-pass').value;
-      const remember = !!document.getElementById('enc-remember').checked;
-      if (!pass) { toast('Enter passphrase','danger'); return; }
-      try {
-        await cryptoStore.enable(pass, remember);
-        window.FEATURE_ENCRYPTION = true;
-        toast('Encryption enabled','success');
-      } catch(e){ console.error(e); toast('Enable failed','danger'); }
-    });
-
-    document.getElementById('enc-resume')?.addEventListener('click', async ()=>{
-      const pass = document.getElementById('enc-pass').value;
-      if (!pass) { toast('Enter passphrase','danger'); return; }
-      try {
-        const ok = await cryptoStore.resume(pass);
-        if (!ok) { toast('No encrypted data or wrong passphrase','danger'); return; }
-        window.FEATURE_ENCRYPTION = true;
-        toast('Session unlocked','success');
-      } catch(e){ console.error(e); toast('Unlock failed','danger'); }
-    });
-
-    document.getElementById('enc-disable')?.addEventListener('click', async ()=>{
-      try {
-        await cryptoStore.disable();
-        window.FEATURE_ENCRYPTION = false;
-        toast('Encryption disabled','secondary');
-      } catch(e){ console.error(e); toast('Disable failed','danger'); }
-    });
-
-    // ---------------- Sync (WebDAV) ----------------
-    async function loadDavForm(){
-      const cfg = await webdav.loadConfig?.() || {};
-      $('#dav-endpoint').value = cfg.endpoint || '';
-      $('#dav-user').value     = cfg.username || '';
-      $('#dav-pass').value     = cfg.password || '';
-      $('#dav-path').value     = cfg.remotePath || '/StudyCompanion/bundle.json';
-    }
-
-    $('#dav-save')?.addEventListener('click', async ()=>{
-      const cfg = {
-        endpoint: $('#dav-endpoint').value.trim(),
-        username: $('#dav-user').value.trim(),
-        password: $('#dav-pass').value,
-        remotePath: $('#dav-path').value.trim() || '/StudyCompanion/bundle.json'
-      };
-      await webdav.saveConfig?.(cfg);
-      toast('Sync settings saved','success');
-    });
-
-    $('#dav-check')?.addEventListener('click', async ()=>{
-      try {
-        const r = await webdav.listRemote?.();
-        toast(r?.exists ? `Remote exists${r.etag ? ' (ETag '+r.etag+')' : ''}` : 'Not found','secondary');
-      } catch(e){ console.error(e); toast('Check failed','danger'); }
-    });
-
-    $('#dav-upload')?.addEventListener('click', async ()=>{
-      try {
-        const bundle = await (storage.exportBundle?.() || { version:'2.0', exportedAt: new Date().toISOString() });
-        await webdav.uploadBundle?.(null, bundle); // null => use saved config
-        toast('Uploaded','success');
-      } catch(e){ console.error(e); toast('Upload failed','danger'); }
-    });
-
-    $('#dav-download')?.addEventListener('click', async ()=>{
-      try {
-        const remote = await webdav.downloadBundle?.();
-        if (storage.importBundle) {
-          await storage.importBundle(remote);
-        } else {
-          // fallback: apply common buckets
-          await storage.setDocuments?.(remote.library?.docs || []);
-          await storage.setFavorites?.(remote.library?.favorites || []);
-          await storage.saveAllAnnotations?.(remote.notes?.annotations || []);
-          await storage.saveMeetingNotes?.(remote.notes?.meeting || []);
-          await storage.saveSchedule?.('midweek', remote.meetings?.schedules?.midweek || {});
-          await storage.saveSchedule?.('weekend', remote.meetings?.schedules?.weekend || {});
-          await storage.saveSettings?.(remote.settings || {});
-        }
-        toast('Downloaded & applied','success');
-      } catch(e){ console.error(e); toast('Download failed','danger'); }
-    });
-
-    // ---------------- Boot ----------------
+    // Manifest / version
     (async ()=>{
-      try { await storage.init?.(); } catch {}
-      try { await lock.init?.({ idleMinutes: 15 }); } catch {}
-      await loadSettingsIntoForm();
-      await loadDavForm();
+      try{
+        const res = await fetch('manifest.webmanifest');
+        const mf = await res.json();
+        document.getElementById('app-name').textContent = mf.name || 'Study Companion';
+        if (mf.version) document.getElementById('app-version').textContent = `v${mf.version}`;
+      } catch {}
+    })();
+
+    // Export backup
+    document.getElementById('btn-export')?.addEventListener('click', async ()=>{
+      try{
+        await storage.init?.();
+        if (typeof storage.exportBackup === 'function') {
+          const blob = await storage.exportBackup();
+          downloadBlob(blob, 'study-companion-backup.json');
+        } else {
+          // Fallback: build a simple backup
+          const data = {
+            documents: await (storage.getDocuments?.() || []),
+            favorites: await (storage.getFavorites?.() || []),
+            notes:     await (storage.getMeetingNotes?.() || []),
+            annotations: await (storage.getAllAnnotations?.() || []),
+            createdAt: new Date().toISOString(),
+            app: 'Study Companion',
+            version: 1
+          };
+          const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+          downloadBlob(blob, 'study-companion-backup.json');
+        }
+        toast('Backup exported','success');
+      } catch(e){ console.error(e); toast('Export failed','danger'); }
+    });
+
+    function downloadBlob(blob, filename){
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }
+
+    // Import backup
+    const importInput = document.getElementById('import-input');
+    document.getElementById('btn-import')?.addEventListener('click', ()=> importInput?.click());
+    importInput?.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0]; if (!file) return;
+      try{
+        await storage.init?.();
+        if (typeof storage.importBackup === 'function') {
+          await storage.importBackup(file);
+        } else {
+          const text = await file.text();
+          const json = JSON.parse(text);
+          // naive merge fallback
+          const docs = Array.isArray(json.documents) ? json.documents : [];
+          const favs = Array.isArray(json.favorites) ? json.favorites : [];
+          const notes = Array.isArray(json.notes) ? json.notes : [];
+          const anns = Array.isArray(json.annotations) ? json.annotations : [];
+
+          // Persist via available APIs
+          for (const d of docs) { try{ await storage.saveDocument?.(d); }catch{} }
+          if (storage.setItem) { try{ await storage.setItem('favorites', favs); }catch{} }
+          if (storage.saveMeetingNote && notes.length) {
+            for (const n of notes) { try{ await storage.saveMeetingNote(n); }catch{} }
+          }
+          if (storage.saveAnnotations && anns.length) {
+            for (const a of anns) { try{ await storage.saveAnnotations(a.docId, a.items||a); }catch{} }
+          }
+        }
+        toast('Backup imported','success');
+        updateStorageUsage();
+      } catch(e){ console.error(e); toast('Import failed','danger'); }
+      e.target.value = '';
+    });
+
+    // Clear library
+    document.getElementById('btn-clear-library')?.addEventListener('click', async ()=>{
+      if (!confirm('This will delete ALL documents, notes, and favorites on this device. Continue?')) return;
+      try{
+        if (typeof storage.clearAll === 'function') {
+          await storage.clearAll();
+        } else {
+          // Fallback: rough clear
+          await storage.clearDocuments?.();
+          await storage.clearMeetingNotes?.();
+          if (storage.setItem) await storage.setItem('favorites', []);
+        }
+        toast('Library cleared','danger');
+        updateStorageUsage();
+      } catch(e){ console.error(e); toast('Failed to clear library','danger'); }
+    });
+
+    // Clear cache
+    document.getElementById('btn-clear-cache')?.addEventListener('click', async ()=>{
+      try{
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        toast('Cache cleared','secondary');
+      } catch(e){ console.error(e); toast('Failed to clear cache','danger'); }
+    });
+
+    // Reload SW
+    document.getElementById('btn-reload-sw')?.addEventListener('click', async ()=>{
+      try{
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          await reg?.update();
+          toast('Service worker reloaded','secondary');
+        } else {
+          toast('No service worker','secondary');
+        }
+      } catch(e){ console.error(e); toast('Failed to reload SW','danger'); }
+    });
+
+    // Notifications
+    function updateNotifyStatus(){
+      const st = Notification?.permission || 'unsupported';
+      document.getElementById('notify-status').textContent = `Status: ${st}`;
+    }
+    document.getElementById('btn-notify-perm')?.addEventListener('click', async ()=>{
+      try{
+        if (!('Notification' in window)) { toast('Notifications unsupported','danger'); return; }
+        const perm = await Notification.requestPermission();
+        toast(perm === 'granted' ? 'Notifications enabled' : `Permission: ${perm}`, perm==='granted'?'success':'secondary');
+        updateNotifyStatus();
+      } catch(e){ console.error(e); toast('Request failed','danger'); }
+    });
+
+    // Init
+    (async ()=>{
+      try{ await storage.init?.(); }catch{}
+      updateStorageUsage();
+      updateNotifyStatus();
     })();
   </script>
 </body>
