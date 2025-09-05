@@ -14,18 +14,8 @@ function getToast(){
 
 /**
  * A very small API used by meetings.html toolbar buttons.
- * You can call these directly from inline handlers.
  */
 export const notes = {
-  /**
-   * Reads #meeting-* fields from the DOM and saves as a meeting note.
-   * Required inputs:
-   *  - #meeting-id (hidden, optional if new)
-   *  - #meeting-title
-   *  - #meeting-date (YYYY-MM-DD)
-   *  - #meeting-type (midweek|weekend)
-   *  - #meeting-content
-   */
   async saveMeetingNote(){
     try { await storage.init?.(); } catch {}
     const toast = getToast();
@@ -52,13 +42,9 @@ export const notes = {
     if (idEl) idEl.value = saved.id;
     toast('Saved','success');
 
-    // Refresh “My Meeting Notes” list when present
     try { window.loadMeetingNotes?.(); } catch {}
   },
 
-  /**
-   * Deletes the currently loaded meeting note by #meeting-id.
-   */
   async deleteMeetingNote(){
     try { await storage.init?.(); } catch {}
     const toast = getToast();
@@ -69,7 +55,6 @@ export const notes = {
 
     await storage.deleteMeetingNote(id);
 
-    // Reset editor fields
     const titleEl = document.getElementById('meeting-title');
     const dateEl  = document.getElementById('meeting-date');
     const typeEl  = document.getElementById('meeting-type');
@@ -80,19 +65,12 @@ export const notes = {
     if (typeEl)  typeEl.value  = 'midweek';
     if (contEl)  contEl.value  = '';
 
-    // Re-render preview if present
     try { window.renderPrev?.(); } catch {}
-
-    // Refresh list when present
     try { window.loadMeetingNotes?.(); } catch {}
 
     toast('Deleted','danger');
   },
 
-  /**
-   * Simple Markdown insertion helper for any focused textarea.
-   * You can also call window.app?.insertMarkdown — but this is handy if needed here.
-   */
   insertAtCursor(prefix='', suffix=''){
     const el = document.activeElement;
     if (!el || el.tagName !== 'TEXTAREA') return;
@@ -110,47 +88,135 @@ export const notes = {
   }
 };
 
-// Optional: a very small initializer for the /notes.html page
+/**
+ * Utility for All Notes page to delete a single annotation by doc+id.
+ */
+async function deleteAnnotationById(docId, annId){
+  const list = await storage.getAnnotations(docId) || [];
+  const next = list.filter(a => (a.id !== annId));
+  await storage.saveAnnotations(docId, next);
+}
+
+/**
+ * All Notes page init: shows highlights (annotations) + meeting notes together
+ * and provides Edit / Delete / Open actions.
+ */
 export async function initNotesIndex(){
   try { await storage.init?.(); } catch {}
   const $ = s => document.querySelector(s);
-
-  const docs = await storage.getDocuments?.() || [];
-  const byId = Object.fromEntries(docs.map(d=>[d.id, d]));
-  const anns = await (storage.getAllAnnotations?.() || []);
-  const mtgs = await (storage.getMeetingNotes?.() || []);
-
+  const toast = getToast();
   const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+  let docs = await storage.getDocuments?.() || [];
+  let byId = Object.fromEntries(docs.map(d=>[d.id, d]));
+  let anns = await (storage.getAllAnnotations?.() || []);   // array of {id, documentId, text/quote/note, ...}
+  let mtgs = await (storage.getMeetingNotes?.() || []);     // array of meeting notes
+
+  // Normalize into a single list with type tags
+  function buildAll(){
+    return [
+      ...anns.map(a=>({ ...a, _type:'ann' })), // keep documentId
+      ...mtgs.map(m=>({ ...m, _type:'mtg' }))
+    ].sort((a,b)=> new Date(b.updatedAt||b.createdAt||0) - new Date(a.updatedAt||a.createdAt||0));
+  }
+  let all = buildAll();
 
   function render(items){
     const listEl = $('#list');
     if (!listEl) return;
+
     listEl.innerHTML = items.length ? items.map(h=>{
-      const doc = byId[h.documentId];
-      const title = doc?.title || h.title || '(Untitled)';
+      const isAnn = h._type === 'ann';
+      const isMtg = h._type === 'mtg';
+      const doc   = isAnn ? byId[h.documentId] : null;
+
+      const title = isMtg
+        ? (h.title || 'Meeting Note')
+        : (doc?.title || h.title || 'Untitled');
+
+      const when  = new Date(h.updatedAt||h.createdAt||Date.now()).toLocaleString();
       const text  = h.quote || h.text || h.note || h.content || '';
+
+      // Action buttons per type
+      const actions = isMtg
+        ? `
+          <div class="btn-group btn-group-sm">
+            <a class="btn btn-outline-primary"
+               href="meetings.html#note=${encodeURIComponent(h.id)}"
+               title="Edit in Meetings"><i class="fa-regular fa-pen-to-square"></i> Edit</a>
+            <button class="btn btn-outline-danger"
+                    data-action="del-mtg" data-id="${h.id}"
+                    title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+          </div>`
+        : `
+          <div class="btn-group btn-group-sm">
+            ${h.documentId ? `<a class="btn btn-outline-primary"
+                 href="reader.html?doc=${encodeURIComponent(h.documentId)}"
+                 title="Open document"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</a>` : ''}
+            ${(h.documentId && h.id) ? `<button class="btn btn-outline-danger"
+                 data-action="del-ann" data-id="${h.id}" data-doc="${h.documentId}"
+                 title="Delete highlight"><i class="fa-regular fa-trash-can"></i></button>` : ''}
+          </div>`;
+
+      const badge = isMtg
+        ? `<span class="badge text-bg-light ms-1">Meeting</span>`
+        : `<span class="badge text-bg-light ms-1">${(doc?.type||'TXT').toUpperCase()}</span>`;
+
       return `<div class="border rounded p-2 mb-2">
-        <div class="fw-semibold">${esc(title)}</div>
-        <div class="text-muted small">${new Date(h.updatedAt||h.createdAt||Date.now()).toLocaleString()}</div>
-        <div class="mt-1">${esc(text)}</div>
+        <div class="d-flex align-items-start justify-content-between gap-2">
+          <div class="me-2">
+            <div class="fw-semibold text-truncate">${esc(title)} ${badge}</div>
+            <div class="text-muted small">${when}</div>
+            <div class="mt-1">${esc(text)}</div>
+          </div>
+          ${actions}
+        </div>
       </div>`;
     }).join('') : `<div class="text-muted">No notes yet.</div>`;
   }
 
-  let all = [
-    ...anns.map(a=>({ ...a, _type:'ann' })),
-    ...mtgs.map(m=>({ ...m, _type:'mtg' }))
-  ].sort((a,b)=> new Date(b.updatedAt||b.createdAt||0) - new Date(a.updatedAt||a.createdAt||0));
-
+  // Filtering
   const qEl = $('#q'); const runBtn = $('#run');
-  const run = ()=>{
+  function run(){
     const term = (qEl?.value||'').toLowerCase().trim();
     const items = term ? all.filter(x=>
       (x.title||'').toLowerCase().includes(term) ||
       (x.text||x.note||x.content||x.quote||'').toLowerCase().includes(term)
     ) : all;
     render(items);
-  };
+  }
+
+  // Delegated actions (delete)
+  $('#list')?.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const action = btn.getAttribute('data-action');
+    if (action === 'del-mtg'){
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (!confirm('Delete this meeting note?')) return;
+      await storage.deleteMeetingNote?.(id);
+      // reload data
+      mtgs = await (storage.getMeetingNotes?.() || []);
+      all = buildAll();
+      run();
+      toast('Deleted','danger');
+    } else if (action === 'del-ann'){
+      const id  = btn.getAttribute('data-id');
+      const doc = btn.getAttribute('data-doc');
+      if (!id || !doc) return;
+      if (!confirm('Delete this highlight/note?')) return;
+      await deleteAnnotationById(doc, id);
+      // reload data
+      anns = await (storage.getAllAnnotations?.() || []);
+      all = buildAll();
+      run();
+      toast('Deleted','danger');
+    }
+  });
+
+  // Boot
   qEl && (qEl.value = new URLSearchParams(location.search).get('q') || '');
   runBtn?.addEventListener('click', run);
   run();

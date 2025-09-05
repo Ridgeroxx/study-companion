@@ -1,159 +1,177 @@
-// js/reminders.js
-// Exports: init(storage), refresh(storage), requestPermission(), isSupported(), listUpcoming(limit)
-
-const KEY_LAST_PLAN = 'reminders_last_plan_v1';
-const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000;
-
-let _timers = [];
+// js/reminders.js — local reminders (foreground timers + SW notifications + catch-up)
 let _storage = null;
+let _timers = [];
+let _wired = false;
 
-function clearTimers(){ _timers.forEach(clearTimeout); _timers = []; }
-const isSecure = () => location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+export async function init(storage){
+  _storage = storage;
+  await ensureServiceWorker();
 
-export function isSupported(){
-  return 'Notification' in window && isSecure();
+  // Wire the "Enable alerts" button
+  if (!_wired) {
+    document.getElementById('btn-enable-notifs')?.addEventListener('click', requestPermission);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') catchUp();
+    });
+    _wired = true;
+  }
+
+  // Preload a schedule so "Upcoming" has data even before permission
+  await refresh(storage);
 }
 
 export async function requestPermission(){
-  if (!isSupported()) return { ok:false, reason:'Not secure or unsupported' };
-  if (Notification.permission === 'granted') return { ok:true };
-  if (Notification.permission === 'denied') return { ok:false, reason:'blocked' };
-  try {
-    const r = await Notification.requestPermission();
-    return { ok: r === 'granted', reason: r };
-  } catch {
-    return { ok:false, reason:'error' };
+  if (!('Notification' in window)) {
+    try { window.app?.toast?.('Notifications not supported on this browser', 'secondary'); } catch {}
+    return false;
+  }
+  let perm = Notification.permission;
+  if (perm !== 'granted') perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    try { window.app?.toast?.('Alerts enabled', 'success'); } catch {}
+    await refresh(_storage);
+    return true;
+  } else {
+    try { window.app?.toast?.('Alerts blocked', 'secondary'); } catch {}
+    return false;
   }
 }
 
-function supportsTriggers(){
-  return 'TimestampTrigger' in window && 'showNotification' in (navigator.serviceWorker?.registration || {});
+// Returns [{ title, whenISO }]
+export async function listUpcoming(limit=5){
+  const evs = await collectEvents();
+  evs.sort((a,b)=> +new Date(a.whenISO) - +new Date(b.whenISO));
+  return evs.slice(0, limit);
 }
 
-function preTime(at){
-  const d = new Date(at);
-  d.setDate(d.getDate() - 1);
-  return d;
-}
-
-// ---- Build upcoming items from storage (Meetings, Convention, Planner)
-function nextWeekly(dow, hhmm){
-  const [h,m] = (hhmm||'00:00').split(':').map(v=>parseInt(v||'0',10));
-  const now = new Date();
-  const d = new Date(); d.setSeconds(0,0);
-  const add = (dow - d.getDay() + 7) % 7;
-  d.setDate(d.getDate()+add);
-  d.setHours(h,m,0,0);
-  if (d <= now) d.setDate(d.getDate()+7);
-  return d;
-}
-
-async function computeUpcoming(storage){
-  const out = [];
-  // weekly meetings
-  try {
-    const mid = await storage.getSchedule?.('midweek') || [];
-    const wk  = await storage.getSchedule?.('weekend') || [];
-    for (const it of mid){ if (typeof it.day==='number' && it.time) out.push({title:'Midweek meeting', at: nextWeekly(it.day,it.time)}); }
-    for (const it of wk){  if (typeof it.day==='number' && it.time) out.push({title:'Weekend meeting', at: nextWeekly(it.day,it.time)}); }
-  } catch {}
-
-  // convention sessions
-  try {
-    const conv = await storage.getConvention?.();
-    for (const s of (conv?.sessions||[])){
-      const at = new Date(`${s.date}T${(s.time||'00:00')}:00`);
-      if (!isNaN(at)) out.push({title: s.label || 'Convention', at});
-    }
-  } catch {}
-
-  // planner items with a date/time in the future
-  try {
-    const list = (await window.localforage.getItem('planner_items_v1')) || [];
-    for (const it of list){
-      if (!it.date) continue;
-      const at = new Date(it.date + 'T' + (it.time||'00:00') + ':00');
-      if (!isNaN(at) && at > new Date()) out.push({ title: it.title || 'Planner', at, _planner:true, remind: !!it.remind });
-    }
-  } catch {}
-
-  const now = Date.now();
-  const soon = now + 56*24*60*60*1000;
-  return out.filter(x => x.at.getTime()>now && x.at.getTime()<soon).sort((a,b)=>a.at-b.at);
-}
-
-async function showNow(title, body){
-  try {
-    const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) return reg.showNotification(title, {
-      body, icon:'icons/logo.png', badge:'icons/logo.png', tag:`rem:${title}:${body}`, renotify:true
-    });
-  } catch {}
-  try { new Notification(title, { body, icon:'icons/logo.png' }); } catch {}
-}
-
-function setTimer(ts, cb){
-  const ms = ts - Date.now();
-  if (ms <= 0) return;
-  const delay = Math.min(ms, MAX_TIMEOUT_MS);
-  _timers.push(setTimeout(cb, delay));
-}
-
-async function planWithTriggers(items){
-  const reg = await navigator.serviceWorker?.getRegistration();
-  if (!reg) return false;
-  for (const it of items){
-    const when = it.at.getTime();
-    const pre  = preTime(it.at).getTime();
-    if ('TimestampTrigger' in window){
-      try{ await reg.showNotification(it.title, { body:'Starts now.',      showTrigger:new TimestampTrigger(when), tag:`at:${when}`,  icon:'icons/logo.png', badge:'icons/logo.png' }); }catch{}
-      try{ await reg.showNotification(it.title, { body:'Tomorrow at this time.', showTrigger:new TimestampTrigger(pre),  tag:`pre:${pre}`, icon:'icons/logo.png', badge:'icons/logo.png' }); }catch{}
-    }
-  }
-  return true;
-}
-
-async function planWithTimeouts(items){
-  for (const it of items){
-    const when = it.at.getTime();
-    const pre  = preTime(it.at).getTime();
-    setTimer(pre,  ()=> showNow(it.title, 'Tomorrow at this time.'));
-    setTimer(when, ()=> showNow(it.title, 'Starts now.'));
-  }
-}
-
-export async function refresh(storage = _storage){
-  if (!storage) return;
+// Rebuild timers (foreground); show via SW if possible at fire time
+export async function refresh(storage){
+  _storage = storage || _storage;
   clearTimers();
-  if (!isSupported()) return;
 
-  if (Notification.permission !== 'granted'){
-    // don’t nag; user can click the button to request
-    return;
+  const soon = await listUpcoming(25);
+  const now = Date.now();
+  const DAY = 24*3600*1000;
+
+  for (const ev of soon) {
+    const t  = +new Date(ev.whenISO);
+    const dt = t - now;
+    if (dt > 0 && dt <= DAY) {
+      const id = setTimeout(()=> fireReminder(ev), dt);
+      _timers.push(id);
+    }
+  }
+}
+
+function clearTimers(){ _timers.forEach(id => clearTimeout(id)); _timers.length = 0; }
+
+async function collectEvents(){
+  const out = [];
+  const add = (when, title)=> out.push({ whenISO: when.toISOString(), title });
+
+  try{
+    await _storage?.init?.();
+    const now = new Date();
+    const todayDow = now.getDay();
+
+    const mid = await _storage.getSchedule?.('midweek') || [];   // [{day:0-6, time:'HH:mm'}]
+    const wkd = await _storage.getSchedule?.('weekend') || [];
+
+    const nextOf = (dayIdx, timeHHmm, label) => {
+      const [hh,mm] = (timeHHmm||'00:00').split(':').map(n=>parseInt(n,10)||0);
+      const d = new Date();
+      const diff = (dayIdx - todayDow + 7) % 7;
+      d.setDate(d.getDate() + diff);
+      d.setHours(hh, mm, 0, 0);
+      if (diff === 0 && d.getTime() <= now.getTime()) d.setDate(d.getDate() + 7);
+      return { when: d, label };
+    };
+
+    mid.forEach(s => { const n = nextOf(+s.day||0, s.time||'19:00', 'Midweek Meeting');  add(n.when, n.label); });
+    wkd.forEach(s => { const n = nextOf(+s.day||0, s.time||'10:00', 'Weekend Meeting'); add(n.when, n.label); });
+
+    const conv = await _storage.getConvention?.() || { sessions: [] };
+    (conv.sessions||[]).forEach(s => {
+      if (!s?.date) return;
+      const when = new Date(`${s.date}T${s.time||'00:00'}:00`);
+      if (!isNaN(+when)) add(when, s.title || s.theme || 'Convention Session');
+    });
+  } catch(e) {
+    console.warn('[reminders] collectEvents failed', e);
   }
 
-  const items = await computeUpcoming(storage);
-
-  let planned = false;
-  if (supportsTriggers()) planned = await planWithTriggers(items);
-  if (!planned) await planWithTimeouts(items);
-
-  try { await window.localforage.setItem(KEY_LAST_PLAN, { at: Date.now(), n: items.length }); } catch {}
+  return out;
 }
 
-export async function listUpcoming(limit=8){
-  const items = await computeUpcoming(_storage || window.storage || {});
-  return items.slice(0, limit).map(i => ({ title:i.title, whenISO: i.at.toISOString() }));
+async function fireReminder(ev){
+  const title = ev.title || 'Reminder';
+  const body  = new Date(ev.whenISO).toLocaleString();
+
+  // Prefer service worker for better delivery when app is in the background
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration?.();
+    if (reg && Notification.permission === 'granted') {
+      await reg.showNotification(title, {
+        body,
+        tag: 'reminder-' + ev.whenISO,
+        badge: 'icons/logo.png',
+        icon:  'icons/logo.png',
+        vibrate: [120, 40, 120],
+        data: { url: 'app.html' }
+      });
+      try { window.app?.toast?.(`${title} — now`, 'primary'); } catch {}
+      return;
+    }
+  } catch(e){ console.warn('[reminders] showNotification failed', e); }
+
+  // Fallback: page-level notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+  try { window.app?.toast?.(`${title} — now`, 'primary'); } catch {}
 }
 
-export async function init(storage){
-  _storage = storage || window.storage || null;
-  // do not auto-request on mobile — must be user gesture
-  await refresh(_storage);
-
-  document.addEventListener('visibilitychange', ()=> {
-    if (document.visibilityState === 'visible') refresh(_storage);
-  }, { passive:true });
-
-  setInterval(()=> refresh(_storage), 15*60*1000);
+// If user re-opens the app around the scheduled time, still show it
+async function catchUp(){
+  const windowMs = 60 * 1000; // 1 minute grace
+  const now = Date.now();
+  const evs = await listUpcoming(50);
+  for (const ev of evs) {
+    const t = +new Date(ev.whenISO);
+    if (t <= now && t >= (now - windowMs)) {
+      fireReminder(ev);
+    }
+  }
 }
+
+async function ensureServiceWorker(){
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    // guesses that work for root or subfolder deploys
+    const base = location.pathname.replace(/[^/]+$/, ''); // current dir ending with /
+    const guesses = [
+      `${base}sw.js`,    // ./sw.js (next to app.html)
+      `/sw.js`           // site root (if you deploy SW there)
+    ];
+
+    for (const url of guesses) {
+      try {
+        // Avoid registering a 404/HTML page
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (!ct.includes('javascript')) {
+          // Some hosts serve 404 HTML with 200 OK; skip non-JS
+          continue;
+        }
+        // Scope must be within the SW directory; leave default
+        await navigator.serviceWorker.register(url);
+        return;
+      } catch {}
+    }
+    console.warn('[SW] service-worker.js not found. Place it next to app.html (or at site root).');
+  } catch (e) {
+    console.warn('[SW] register failed', e);
+  }
+}
+

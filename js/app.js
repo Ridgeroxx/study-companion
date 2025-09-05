@@ -1,4 +1,5 @@
-// js/app.js — App shell + home page actions (global & safe for inline bridges)
+// js/app.js — wired, clean, resilient
+console.log('Study Companion build', '2025-09-05-15');
 
 import { storage } from './storage.js';
 import { reader } from './reader.js';
@@ -8,343 +9,176 @@ import { FLAGS } from './flags.js';
 import { bindSlashMenu } from './notes/templates.js';
 import { lock } from './security/lock.js';
 import * as reminders from './reminders.js';
+import { sync } from './sync-local.js';
 
+// expose globals (once)
+window.storage   = storage;
+window.reader    = reader;
+window.notes     = notes;
+window.schedule  = schedule;
+window.reminders = reminders;
+window.app       = null;
 
 const I18N = {
-  en: {
-    welcome: 'Welcome back 👋',
-    welcome_sub: 'Capture notes, import materials, and jump into reading.',
-    quick_capture: 'Quick capture',
-    quick_capture_sub: 'Save thoughts fast',
-    new_page: 'New page',
-    import: 'Import',
-    clear: 'Clear',
-    save: 'Save',
-    continue_reading: 'Continue reading',
-    recent: 'Recent',
-    your_library: 'Your library',
-    library: 'Library',
-    open: 'Open',
-    nothing_yet: 'Nothing yet. Import a document or create a page to begin.',
-    empty_library: 'Your library is empty.',
-    no_recent: 'No recent items.',
-    no_favorites: 'No favorites yet.'
-  },
-  es: {
-    welcome: 'Bienvenido de nuevo 👋',
-    welcome_sub: 'Captura notas, importa materiales y ponte a leer.',
-    quick_capture: 'Captura rápida',
-    quick_capture_sub: 'Guarda ideas rápidamente',
-    new_page: 'Nueva página',
-    import: 'Importar',
-    clear: 'Borrar',
-    save: 'Guardar',
-    continue_reading: 'Seguir leyendo',
-    recent: 'Reciente',
-    your_library: 'Tu biblioteca',
-    library: 'Biblioteca',
-    open: 'Abrir',
-    nothing_yet: 'Aún no hay nada. Importa un documento o crea una página para empezar.',
-    empty_library: 'Tu biblioteca está vacía.',
-    no_recent: 'No hay elementos recientes.',
-    no_favorites: 'Aún no hay favoritos.'
-  }
+  en: { quick_actions:'Quick Actions', import:'Import', continue:'Continue', study_planner:'Study Planner',
+        today:'Today', this_week:'This Week', later:'Later', upcoming:'Upcoming', enable_alerts:'Enable alerts',
+        focus_timer:'Focus Timer', stats_streak:'Stats & Streak', smart_folders:'Smart Folders', tags:'Tags',
+        masonry:'Masonry Highlights', quick_capture:'Quick Capture', clear:'Clear', save:'Save',
+        schedule:'Schedule', meetings:'Meetings', convention:'Convention', home:'Home', library:'Library', notes:'Notes', reader:'Reader', settings:'Settings' },
+  es: { quick_actions:'Acciones rápidas', import:'Importar', continue:'Continuar', study_planner:'Plan de estudio',
+        today:'Hoy', this_week:'Esta semana', later:'Más tarde', upcoming:'Próximos', enable_alerts:'Activar avisos',
+        focus_timer:'Temporizador', stats_streak:'Estadísticas y racha', smart_folders:'Carpetas inteligentes', tags:'Etiquetas',
+        masonry:'Destacados', quick_capture:'Captura rápida', clear:'Borrar', save:'Guardar',
+        schedule:'Agenda', meetings:'Reuniones', convention:'Asamblea', home:'Inicio', library:'Biblioteca', notes:'Notas', reader:'Lector', settings:'Ajustes' }
 };
-
-const TEMPLATES = {
-  outline: { title:'Outline', type:'midweek', body:
-`# Title
-
-## Main Points
-- Point 1
-- Point 2
-- Point 3
-
-## Scripture
-- [ ] Add scripture references here
-
-## Actions
-- [ ] Task 1
-- [ ] Task 2
-`},
-  study: { title:'Study Note', type:'midweek', body:
-`# Study Note
-
-**Topic:**  
-**Key Text:**  
-
-## Notes
-- 
-
-## Questions
-- 
-
-## Takeaways
-- 
-`},
-  sermon: { title:'Sermon Outline', type:'weekend', body:
-`# Sermon Outline
-
-**Theme:**  
-**Key Scripture:**  
-
-## Introduction
-- 
-
-## Body
-- 
-
-## Conclusion
-- 
-
-## Application
-- 
-`},
-  meeting: { title:'Meeting Notes', type:'midweek', body:
-`# Meeting Notes
-
-**Date:** ${new Date().toISOString().slice(0,10)}
-
-## Highlights
-- 
-
-## Scriptures
-- 
-
-## To remember
-- 
-`}
-};
+function i18nApply(lang='en', root=document){
+  root.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    const txt = I18N[lang]?.[key] ?? I18N.en[key] ?? '';
+    if (txt) el.textContent = txt;
+  });
+  const badge = document.getElementById('current-language');
+  if (badge) badge.textContent = lang.toUpperCase();
+}
 
 class App {
   constructor() {
-    this.langKey = 'app_lang';
+    this.langKey  = 'app_lang';
     this.themeKey = 'app_theme';
     this.currentLanguage = localStorage.getItem(this.langKey) || 'en';
 
-    // When a file import finishes, open it
-    window.onDocumentImported = (doc) => {
-      if (!doc?.id) return;
-      location.href = `reader.html?doc=${encodeURIComponent(doc.id)}`;
+    // open imported doc immediately
+    window.onDocumentImported = async (doc) => {
+      try { await window.dashboard?.refresh?.(); } catch {}
+      if (doc?.id) location.href = `reader.html?doc=${encodeURIComponent(doc.id)}`;
     };
 
-    // Expose globals early
-    window.storage = storage;
-    window.reader  = reader;
-    window.notes   = notes;
-    window.schedule= schedule;
-    window.app     = this;
+    // polyfill getAllAnnotations if missing
+    if (!storage.getAllAnnotations) {
+      storage.getAllAnnotations = async () => {
+        try {
+          await storage.init?.();
+          const docs = await (storage.getDocuments?.() || []);
+          const out = [];
+          for (const d of (docs||[])) {
+            const anns = await (storage.getAnnotations?.(d.id) || []);
+            (anns||[]).forEach(a => out.push({
+              ...a,
+              documentId: a.documentId || d.id,
+              docTitle: d.title || '',
+              title: d.title || ''
+            }));
+          }
+          return out;
+        } catch { return []; }
+      };
+    }
   }
 
   async init() {
     try { await storage.init?.(); } catch {}
-    
 
-    // Initialize Security Lock (once)
+    // Theme
+    this._initThemeToggle();
+
+    // i18n
+    i18nApply(this.currentLanguage);
+    this._initLanguageButtons();
+
+    // App lock (optional)
     try {
       if (FLAGS?.lock) await lock.init({ enabled:true, idleMinutes: 15 });
-      else await lock.init({ idleMinutes: 15 }); // safe no-op if disabled
+      else await lock.init({ idleMinutes: 15 });
     } catch {}
 
-    // Initialize Reminders (once)
-    await reminders.init(storage);
+    // Reminders
+    try {
+      await reminders.init(storage);
+      navigator.serviceWorker?.addEventListener('message', (evt)=>{
+        if (evt.data?.type === 'REMINDERS_REFRESH') reminders.refresh(storage);
+      });
+    } catch {}
 
-    // Global hooks to refresh reminders when background asks
-    navigator.serviceWorker?.addEventListener('message', (evt)=>{
-    if (evt.data?.type === 'REMINDERS_REFRESH') reminders.refresh(storage);
+    window.addEventListener('schedule:updated', () => {
+      try { reminders.refresh(storage); } catch {}
+      this.renderUpcoming().catch(()=>{});
+    });
+    window.addEventListener('convention:updated', () => {
+      try { reminders.refresh(storage); } catch {}
+      this.renderUpcoming().catch(()=>{});
     });
 
-    // Optional events schedule.js can dispatch after saving
-    window.addEventListener('schedule:updated', ()=> reminders.refresh());
-    window.addEventListener('convention:updated', ()=> reminders.refresh());
+    // Slash menu (if meetings editor exists on page)
+    try {
+      const meetingEditor = document.getElementById('meeting-content');
+      if (meetingEditor) bindSlashMenu(meetingEditor);
+    } catch {}
 
-    // Slash menu only if the meetings editor exists on this page
-    const meetingEditor = document.getElementById('meeting-content');
-    if (meetingEditor) { try { bindSlashMenu(meetingEditor); } catch {} }
-
-    this._initThemeToggle();
-    this._initLanguageButtons();
+    // Wire UI
     this._wireHomeButtons();
+    this._wirePlanner();
+    await this.renderPlanner();
 
-    try { await this.loadHomeLists(); } catch (e) { console.warn(e); }
-    this.updateLanguageUI();
+    // Auth (no console noise on 401)
+    await this._initAuth();
 
-    // Home dynamic cards
-    this.renderUpcoming().catch(()=>{});
-    this.renderRandomHighlight().catch(()=>{});
+    // Dynamic sections
+    try { await this.loadHomeLists(); } catch {}
+    await Promise.all([
+      this.renderUpcoming().catch(()=>{}),
+      this.renderMasonry().catch(()=>{}),
+      this.renderStats().catch(()=>{}),
+      this.renderRandomHighlight().catch(()=>{})
+    ]);
   }
 
-  /* ---------------- THEME / LANGUAGE ---------------- */
+  /* THEME */
   _initThemeToggle() {
     const saved = localStorage.getItem(this.themeKey) || 'light';
-    document.documentElement.setAttribute('data-bs-theme', saved);
-    const btn = document.getElementById('theme-toggle');
-    btn?.addEventListener('click', () => {
+    const setTheme = (mode) => {
+      document.documentElement.setAttribute('data-bs-theme', mode);
+      try { localStorage.setItem(this.themeKey, mode); } catch {}
+      const icon = document.querySelector('#theme-toggle i');
+      if (icon) {
+        icon.classList.remove('fa-moon','fa-sun');
+        icon.classList.add(mode === 'light' ? 'fa-moon' : 'fa-sun');
+      }
+    };
+    setTheme(saved);
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
       const curr = document.documentElement.getAttribute('data-bs-theme') || 'light';
-      const next = curr === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-bs-theme', next);
-      try { localStorage.setItem(this.themeKey, next); } catch {}
+      setTheme(curr === 'light' ? 'dark' : 'light');
     });
   }
 
+  /* LANGUAGE */
   _initLanguageButtons() {
     const set = (lang) => {
       this.currentLanguage = (lang === 'es') ? 'es' : 'en';
       try { localStorage.setItem(this.langKey, this.currentLanguage); } catch {}
-      const badge = document.getElementById('current-language');
-      if (badge) badge.textContent = this.currentLanguage.toUpperCase();
-      this.updateLanguageUI();
-      // Page-level language refreshers can hook this:
-      try { window.meetingsLang?.applyI18N?.(); } catch {}
+      i18nApply(this.currentLanguage);
     };
     document.getElementById('lang-en')?.addEventListener('click', () => set('en'));
     document.getElementById('lang-es')?.addEventListener('click', () => set('es'));
-    set(this.currentLanguage);
   }
 
-  insertMarkdown(prefix='', suffix=''){
-  const ta = document.getElementById('meeting-content') || document.querySelector('textarea:focus');
-  if (!ta) return;
-  const start = ta.selectionStart ?? ta.value.length;
-  const end   = ta.selectionEnd   ?? ta.value.length;
-  const before= ta.value.slice(0, start);
-  const middle= ta.value.slice(start, end);
-  const after = ta.value.slice(end);
-  ta.value = before + (prefix||'') + middle + (suffix||'') + after;
-  const caret = start + (prefix||'').length + middle.length;
-  ta.selectionStart = ta.selectionEnd = caret;
-  ta.dispatchEvent(new Event('input', {bubbles:true}));
-}
-
-
-  translate(key) {
-    const lang = this.currentLanguage || 'en';
-    return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
-  }
-
-  setLanguage(lang) {
-    this.currentLanguage = (lang === 'es') ? 'es' : 'en';
-    try { localStorage.setItem(this.langKey, this.currentLanguage); } catch {}
-    const badge = document.getElementById('current-language');
-    if (badge) badge.textContent = this.currentLanguage.toUpperCase();
-    this.updateLanguageUI?.();
-    try { window.meetingsLang?.applyI18N?.(); } catch {}
-  }
-
-  updateLanguageUI() {
-    const heroTitle = document.querySelector('.hero .h5.fw-bold');
-    const heroSub   = document.querySelector('.hero .small.text-muted');
-    if (heroTitle) heroTitle.textContent = this.translate('welcome');
-    if (heroSub)   heroSub.textContent   = this.translate('welcome_sub');
-
-    const newPageBtn = document.getElementById('btn-new-page');
-    if (newPageBtn) newPageBtn.innerHTML = `<i class="fa-solid fa-file-circle-plus me-1"></i>${this.translate('new_page')}`;
-
-    const importBtn = document.getElementById('btn-import');
-    if (importBtn) importBtn.innerHTML = `<i class="fa-solid fa-upload me-1"></i>${this.translate('import')}`;
-
-    const saveBtn = document.getElementById('btn-save-note');
-    if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-save me-1"></i>${this.translate('save')}`;
-
-    const clearBtn = document.getElementById('btn-clear-note');
-    if (clearBtn) clearBtn.textContent = this.translate('clear');
-
-    const openLibBtn = document.getElementById('btn-open-library');
-    if (openLibBtn) openLibBtn.innerHTML = `<i class="fa-solid fa-books"></i> ${this.translate('library')}`;
-
-    const openMini = document.getElementById('open-lib-mini');
-    if (openMini) openMini.textContent = this.translate('open');
-
-    const sections = document.querySelectorAll('.section-title');
-    if (sections[0]) sections[0].textContent = this.translate('quick_capture');
-    if (sections[1]) sections[1].textContent = this.translate('continue_reading');
-    if (sections[2]) sections[2].textContent = this.translate('recent');
-    if (sections[3]) sections[3].textContent = this.translate('your_library');
-
-    const qc = document.querySelector('.glass-card .small.text-muted');
-    if (qc) qc.textContent = this.translate('quick_capture_sub');
-  }
-
-  /* ---------------- NAV HELPERS ---------------- */
-  openDoc(id) {
-    if (!id) return;
-    location.href = `reader.html?doc=${encodeURIComponent(id)}`;
-  }
+  /* NAV */
+  openDoc(id){ if (id) location.href = `reader.html?doc=${encodeURIComponent(id)}`; }
 
   async importMenu() {
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.epub,.pdf,.docx,.txt,.md';
-    input.multiple = false;
+    input.type = 'file'; input.accept = '.epub,.pdf,.docx,.txt,.md'; input.multiple = false;
     input.onchange = async () => {
-      const f = input.files?.[0];
-      if (!f) return;
-      try {
-        const doc = await storage.importFile(f);
-        window.onDocumentImported?.(doc);
-      } catch (e) {
-        console.error(e);
-        this.toast('Import failed', 'danger');
-      }
+      const f = input.files?.[0]; if (!f) return;
+      try { const doc = await storage.importFile(f); window.onDocumentImported?.(doc); }
+      catch { this.toast('Import failed', 'danger'); }
     };
     input.click();
   }
 
-  async exportStudy() {
-    try {
-      const docs = await storage.getDocuments();
-      const favs = await storage.getFavorites();
-      const notesAll = [];
-      const bms = {};
-      for (const d of docs) {
-        const ann = await storage.getAnnotations(d.id);
-        notesAll.push(...(ann||[]));
-        bms[d.id] = await storage.getBookmarks(d.id);
-      }
-      const meeting = await storage.getMeetingNotes?.() || [];
-      const midweek = await storage.getSchedule?.('midweek') || {};
-      const weekend = await storage.getSchedule?.('weekend') || {};
-
-      const bundle = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        docs,
-        favorites: favs,
-        annotations: notesAll,
-        bookmarks: bms,
-        meeting,
-        schedules: { midweek, weekend }
-      };
-
-      const blob = new Blob([JSON.stringify(bundle)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `study-bundle-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      this.toast('Export complete', 'success');
-    } catch (e) {
-      console.error(e);
-      this.toast('Export failed', 'danger');
-    }
-  }
-
-  async createNewTextPage() {
-    const title = prompt('Title for the new page:', 'New Page');
-    if (title == null) return;
-    const doc = {
-      id: storage.generateId ? storage.generateId('doc') : `doc_${Date.now()}`,
-      title: title.trim() || 'Untitled',
-      type: 'txt',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    await storage.saveDocument(doc);
-    this.openDoc(doc.id);
-  }
-
+  /* QUICK CAPTURE */
   async saveQuickNote() {
-    const ta = document.getElementById('quick-note');
+    const ta = document.getElementById('qc-text');
     const text = (ta?.value || '').trim();
     if (!text) return this.toast('Nothing to save', 'secondary');
 
@@ -353,112 +187,118 @@ class App {
     let doc = visible.sort((a,b)=> (new Date(b.updatedAt||b.createdAt||0) - new Date(a.updatedAt||a.createdAt||0)))[0];
 
     if (!doc) {
-      doc = {
-        id: storage.generateId ? storage.generateId('doc') : `doc_${Date.now()}`,
-        title: 'Scratchpad',
-        type: 'txt',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      doc = { id: storage.generateId ? storage.generateId('doc') : `doc_${Date.now()}`, title: 'Scratchpad', type: 'txt',
+              createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       await storage.saveDocument(doc);
     }
 
     const list = await storage.getAnnotations(doc.id) || [];
-    list.push({
-      id: storage.generateId ? storage.generateId('ann') : `ann_${Date.now()}`,
-      documentId: doc.id,
-      kind: 'note',
-      text,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+    list.push({ id: storage.generateId ? storage.generateId('ann') : `ann_${Date.now()}`, documentId: doc.id, kind: 'note',
+                text, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     await storage.saveAnnotations(doc.id, list);
     ta.value = '';
     this.toast('Saved to notes', 'success');
   }
 
-  async openLibraryDrawer() {
-    try {
-      const list = await storage.getDocuments() || [];
-      const active = list.filter(d => !d.deletedAt);
-      const box = document.getElementById('library-list');
-      if (!box) return;
-      if (!active.length) box.innerHTML = `<div class="text-muted">${this.translate('empty_library')}</div>`;
-      else {
-        box.innerHTML = active
-          .sort((a,b)=>(new Date(b.updatedAt||b.createdAt||0))-(new Date(a.updatedAt||a.createdAt||0)))
-          .map(d => `
-            <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 shadow-sm">
-              <div>
-                <div class="fw-semibold">${d.title || '(Untitled)'}</div>
-                <div class="text-muted small">${(d.type||'').toUpperCase()} · ${new Date(d.updatedAt||d.createdAt||Date.now()).toLocaleString()}</div>
-              </div>
-              <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-folder-open"></i></button>
-              </div>
-            </div>`).join('');
-      }
-      const el = document.getElementById('libraryDrawer');
-      if (window.bootstrap && el) new bootstrap.Offcanvas(el).show();
-    } catch (e) {
-      console.error(e);
-      this.toast('Failed to open library', 'danger');
-    }
-  }
-
-  /* ---------------- Templates: create a real note, then open editor ---------------- */
-  async createFromTemplate(templateId) {
-    const t = TEMPLATES[templateId];
-    if (!t) return this.toast('Unknown template', 'danger');
-
-    const id = storage.generateId ? storage.generateId('mtg') : `mtg_${Date.now()}`;
-    const now = new Date().toISOString();
-    const note = {
-      id,
-      title: t.title,
-      date: now.slice(0,10),
-      type: t.type || 'midweek',
-      content: t.body,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    try {
-      await storage.saveMeetingNote?.(note);
-      location.href = `meetings.html#note=${encodeURIComponent(id)}`;
-    } catch (e) {
-      console.error(e);
-      this.toast('Could not create from template', 'danger');
-    }
-  }
-
-  /* ---------------- Upcoming (Home) ---------------- */
+  /* UPCOMING */
   async renderUpcoming() {
-    const box = document.getElementById('home-upcoming');
+    const box = document.getElementById('upcoming-list') || document.getElementById('home-upcoming');
     if (!box) return;
+
+    const rows = [];
     try {
-      const rows = [];
+      const items = await reminders.listUpcoming(5);
+      if (items?.length) items.forEach(r => rows.push({ label: r.title, when: new Date(r.whenISO) }));
+    } catch {}
 
-      // Pull from reminders so it's consistent with notifications
-      const list = await reminders.listUpcoming(5);
-      for (const r of list) {
-        rows.push({
-          label: r.title,
-          when: new Date(r.whenISO)
+    try {
+      if (!rows.length) {
+        const withinDays = 14;
+        const mid = await storage.getSchedule?.('midweek')  || [];
+        const wkd = await storage.getSchedule?.('weekend')  || [];
+        const wk  = [...mid.map(x=>({...x, label:'Midweek'})), ...wkd.map(x=>({...x, label:'Weekend'}))];
+        const now = new Date();
+        const nextOf = (dayIdx, timeHHmm, label) => {
+          const [hh, mm] = (timeHHmm||'00:00').split(':').map(n=>parseInt(n,10)||0);
+          const d = new Date(now);
+          const diff = (dayIdx - d.getDay() + 7) % 7;
+          d.setDate(d.getDate() + (diff || (d.getHours()*60 + d.getMinutes() >= hh*60+mm ? 7 : 0)));
+          d.setHours(hh, mm, 0, 0);
+          return { label, when: d };
+        };
+        wk.forEach(s => rows.push(nextOf(Number(s.day||0), s.time||'00:00', s.label)));
+
+        const conv = await storage.getConvention?.() || { sessions: [] };
+        (conv.sessions||[]).forEach(s => {
+          if (!s?.date) return;
+          const when = new Date(`${s.date}T${s.time||'00:00'}:00`);
+          if (!isNaN(+when) && (+when - Date.now()) <= (withinDays*86400000)) {
+            rows.push({ label: s.title || s.theme || 'Convention Session', when });
+          }
         });
-      }
 
-      box.innerHTML = rows.length ? rows.map(r=>`
+        rows.sort((a,b)=> +a.when - +b.when);
+        rows.splice(5);
+      }
+    } catch {}
+
+    box.innerHTML = rows.length
+      ? rows.map(r => `
         <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-1">
           <div><i class="fa-regular fa-bell me-2"></i>${r.label}</div>
           <div class="text-muted">${r.when.toLocaleString()}</div>
-        </div>`).join('') : `<div class="text-muted">No upcoming items.</div>`;
-    } catch(e) {
-      console.error(e);
-      box.innerHTML = `<div class="text-danger">Failed to load.</div>`;
+        </div>`).join('')
+      : `<div class="text-muted">No upcoming items.</div>`;
+  }
+
+  /* MASONRY */
+  async renderMasonry(){
+    const host = document.getElementById('masonry');
+    if (!host) return;
+    try {
+      const items = await storage.getRecentHighlights?.(24) || [];
+      if (!items.length) { host.innerHTML = `<div class="text-muted">No highlights yet.</div>`; return; }
+      const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+      host.innerHTML = items.map(h => `
+        <article class="h-card">
+          <div class="h-body">
+            <div class="h-quote">“${esc(h.text)}”</div>
+            ${h.docTitle ? `<div class="h-doc mt-1">${esc(h.docTitle)}</div>` : ''}
+          </div>
+        </article>
+      `).join('');
+    } catch {
+      host.innerHTML = `<div class="text-danger">Failed to load highlights.</div>`;
     }
   }
 
+  /* STATS */
+  async renderStats(){
+    const box = document.getElementById('stats-box');
+    if (!box) return;
+    try {
+      const [docs, anns, tasks] = await Promise.all([
+        storage.getDocuments?.() || [],
+        storage.getAllAnnotations?.() || [],
+        storage.getPlannerTasks?.() || []
+      ]);
+      const cut = Date.now() - 14*86400000;
+      const days = new Set();
+      anns.forEach(a => { const t=+new Date(a.updatedAt||a.createdAt||0); if (t>cut) days.add(new Date(t).toDateString()); });
+      tasks.forEach(t => { const u=+new Date(t.createdAt||0); if (u>cut) days.add(new Date(u).toDateString()); });
+      const streak = days.size;
+      box.innerHTML = `
+        <div class="d-flex flex-wrap gap-3">
+          <div><i class="fa-solid fa-book me-1"></i><strong>${docs.length}</strong> docs</div>
+          <div><i class="fa-solid fa-highlighter me-1"></i><strong>${anns.length}</strong> highlights</div>
+          <div><i class="fa-solid fa-fire me-1"></i><strong>${streak}</strong> day streak</div>
+        </div>`;
+    } catch {
+      box.innerHTML = `<div class="text-danger">Failed to load stats.</div>`;
+    }
+  }
+
+  /* RANDOM HIGHLIGHT */
   async renderRandomHighlight() {
     const box = document.getElementById('home-highlight');
     if (!box) return;
@@ -477,123 +317,139 @@ class App {
     }
   }
 
-  /* ---------------- HOME LISTS ---------------- */
+  /* HOME LISTS (Continue) */
   async loadHomeLists() {
     const all = await (storage.getActiveDocuments?.() || storage.getDocuments?.() || []);
     const active = (all || []).filter(d=>!d.deletedAt);
     const recent = [...active].sort((a,b)=>(new Date(b.lastOpened||b.updatedAt||b.createdAt||0))-(new Date(a.lastOpened||a.updatedAt||a.createdAt||0)));
+    document.getElementById('qa-continue')?.addEventListener('click', ()=>{
+      const cont = recent[0];
+      if (cont?.id) this.openDoc(cont.id);
+      else this.toast('Nothing to continue yet', 'secondary');
+    });
+  }
 
-    // Continue
-    const cont = recent[0];
-    const contBox = document.getElementById('continue-box');
-    if (contBox) {
-      contBox.innerHTML = cont ? `
-        <div class="d-flex align-items-center justify-content-between border rounded p-2 shadow-sm">
-          <div class="d-flex align-items-center gap-3">
-            <div class="fs-3"><i class="fa-solid fa-book-open"></i></div>
-            <div>
-              <div class="fw-semibold">${cont.title || '(Untitled)'}</div>
-              <div class="small text-muted">${(cont.type||'').toUpperCase()} · ${new Date(cont.updatedAt||cont.createdAt||Date.now()).toLocaleString()}</div>
-            </div>
-          </div>
-          <div><button class="btn btn-sm btn-primary" onclick="window.app.openDoc('${cont.id}')"><i class="fa-solid fa-forward me-1"></i>Continue</button></div>
-        </div>` : `<div class="text-muted">${this.translate('nothing_yet')}</div>`;
+  /* AUTH + SYNC */
+  async _initAuth(){
+    const $ = s=>document.querySelector(s);
+    const lbl = $('#auth-label');
+    const boxOut = $('#auth-box-logged-out');
+    const boxIn  = $('#auth-box-logged-in');
+    const emailLabel = $('#auth-email-label');
+
+    function setAuthUI(user){
+      if (user) {
+        if (lbl) lbl.textContent = user.name || user.email || 'Account';
+        if (emailLabel) emailLabel.textContent = user.email || '';
+        boxOut?.classList.add('d-none'); boxIn?.classList.remove('d-none');
+      } else {
+        if (lbl) lbl.textContent = 'Sign in';
+        boxIn?.classList.add('d-none'); boxOut?.classList.remove('d-none');
+      }
     }
 
-    // Recent grid
-    const rbox = document.getElementById('recent-grid');
-    if (rbox) {
-      rbox.innerHTML = (recent.slice(0,8).map(d => `
-        <div class="col-12 col-sm-6">
-          <div class="border rounded p-2 h-100 shadow-sm d-flex align-items-center justify-content-between">
-            <div>
-              <div class="fw-semibold">${d.title || '(Untitled)'}</div>
-              <div class="small text-muted">${(d.type||'').toUpperCase()} · ${new Date(d.updatedAt||d.createdAt||Date.now()).toLocaleString()}</div>
-            </div>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-folder-open"></i></button>
-            </div>
-          </div>
-        </div>`).join('')) || `<div class="col-12"><div class="text-muted">${this.translate('no_recent')}</div></div>`;
+    let me = null;
+    try { me = await sync.me(); } catch { me = null; } // 401/404 => null silently
+    setAuthUI(me);
+
+    $('#btn-login')?.addEventListener('click', async ()=>{
+      const email = $('#auth-email')?.value?.trim();
+      const pass  = $('#auth-pass')?.value||'';
+      try {
+        const u = await sync.login({ email, password: pass });
+        setAuthUI(u);
+        await this._doFullSync();
+        this.toast('Signed in','success');
+      } catch {
+        this.toast('Login failed','danger');
+      }
+    });
+
+    $('#btn-register')?.addEventListener('click', async ()=>{
+      const email = $('#auth-email')?.value?.trim();
+      const pass  = $('#auth-pass')?.value||'';
+      const name  = email?.split('@')[0]||'';
+      try {
+        const u = await sync.register({ email, password: pass, name });
+        setAuthUI(u);
+        await this._doFullSync();
+        this.toast('Welcome!','success');
+      } catch {
+        this.toast('Register failed','danger');
+      }
+    });
+
+    $('#btn-logout')?.addEventListener('click', ()=>{
+      sync.logout();
+      setAuthUI(null);
+      this.toast('Signed out','secondary');
+    });
+
+    $('#btn-sync-now')?.addEventListener('click', async ()=>{
+      try { await this._doFullSync(); this.toast('Synced','success'); }
+      catch { this.toast('Sync failed','danger'); }
+    });
+
+    if (sync.isAuthed()) { try { await this._doFullSync(); } catch {} }
+  }
+
+  async _doFullSync(){
+    // push docs
+    const docs = await (storage.getDocuments?.() || []);
+    for (const d of docs) {
+      await sync.upsertDoc({
+        id:d.id, title:d.title, type:d.type,
+        meta:d.meta||null, lastOpened:d.lastOpened||null, updatedAt:d.updatedAt||d.createdAt
+      });
+    }
+    // merge docs (pull)
+    const remoteDocs = await sync.pullDocs();
+    for (const rd of (remoteDocs||[])) {
+      const exists = docs.find(x=>x.id===rd.id);
+      if (!exists) {
+        await storage.saveDocument?.({
+          id: rd.id, title: rd.title, type: rd.type, meta: rd.meta,
+          createdAt: rd.updatedAt || new Date().toISOString(),
+          updatedAt: rd.updatedAt || new Date().toISOString()
+        });
+      }
     }
 
-    // Library mini
-    const mini = document.getElementById('library-mini');
-    if (mini) {
-      mini.innerHTML = (active.slice(0,6).map(d=>`
-        <div class="col-12 col-sm-6 col-lg-4">
-          <div class="border rounded p-2 h-100 shadow-sm">
-            <div class="d-flex align-items-center gap-2">
-              <i class="fa-regular fa-file-lines text-muted"></i>
-              <div class="fw-semibold text-truncate">${d.title || '(Untitled)'}</div>
-            </div>
-            <div class="small text-muted mt-1">${(d.type||'').toUpperCase()}</div>
-            <div class="d-flex justify-content-end mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-            </div>
-          </div>
-        </div>`).join('')) || `<div class="col-12"><div class="text-muted">${this.translate('empty_library')}</div></div>`;
+    // push annotations
+    for (const d of docs) {
+      const anns = await (storage.getAnnotations?.(d.id) || []);
+      for (const a of anns) {
+        await sync.upsertAnn({
+          id:a.id, docId:a.documentId, kind:a.kind,
+          quote:a.quote||a.text||'', note:a.note||a.text||'', tags:a.tags||[], cfi:a.cfi||null,
+          createdAt:a.createdAt, updatedAt:a.updatedAt
+        });
+      }
     }
 
-    // Sidebar: Favorites
-    const favIds = await storage.getFavorites?.() || [];
-    const favDocs = active.filter(d => (favIds||[]).includes(d.id));
-    const favBox = document.getElementById('side-favorites');
-    if (favBox) {
-      favBox.innerHTML = favDocs.length ? favDocs.map(d => `
-        <div class="d-flex align-items-center justify-content-between p-1">
-          <div class="text-truncate" title="${d.title||'(Untitled)'}">
-            <i class="fa-solid fa-star text-warning me-1"></i>${d.title||'(Untitled)'}
-          </div>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-            <button class="btn btn-outline-warning" onclick="window.app.toggleFav('${d.id}')"><i class="fa-solid fa-star"></i></button>
-          </div>
-        </div>`).join('') : `<div class="small text-muted">${this.translate('no_favorites')}</div>`;
-    }
-
-    // Sidebar: Recent
-    const sRecent = document.getElementById('side-recent');
-    if (sRecent) {
-      sRecent.innerHTML = recent.slice(0,10).map(d => `
-        <div class="d-flex align-items-center justify-content-between p-1">
-          <div class="text-truncate"><i class="fa-solid fa-book-open text-muted me-1"></i>${d.title||'(Untitled)'}</div>
-          <button class="btn btn-sm btn-outline-primary" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-        </div>`).join('') || `<div class="small text-muted">${this.translate('no_recent')}</div>`;
-    }
-
-    // Sidebar: Pages
-    const sPages = document.getElementById('side-pages');
-    if (sPages) {
-      sPages.innerHTML = active
-        .sort((a,b)=>(a.title||'').localeCompare(b.title||''))
-        .map(d => `
-          <div class="d-flex align-items-center justify-content-between p-1">
-            <div class="text-truncate" title="${d.title||'(Untitled)'}"><i class="fa-regular fa-file-lines text-muted me-1"></i>${d.title||'(Untitled)'}</div>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-warning" title="Favorite" onclick="window.app.toggleFav('${d.id}')"><i class="fa-regular fa-star"></i></button>
-              <button class="btn btn-outline-primary" title="Open" onclick="window.app.openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-              <button class="btn btn-outline-danger" title="Trash" onclick="window.app.softDeleteDoc('${d.id}')"><i class="fa-solid fa-trash"></i></button>
-            </div>
-          </div>`).join('') || `<div class="small text-muted">No pages yet.</div>`;
+    // merge annotations (pull)
+    const remoteAnns = await sync.pullAnnotations();
+    const byDoc = new Map();
+    (remoteAnns||[]).forEach(a => {
+      if (!byDoc.has(a.docId)) byDoc.set(a.docId, []);
+      byDoc.get(a.docId).push(a);
+    });
+    for (const [docId, list] of byDoc) {
+      const localList = await (storage.getAnnotations?.(docId) || []);
+      for (const ra of list) {
+        if (!localList.find(x=>x.id===ra.id)) {
+          localList.push({
+            id: ra.id, documentId: ra.docId, kind: ra.kind,
+            quote: ra.quote, note: ra.note, tags: ra.tags, cfi: ra.cfi,
+            createdAt: ra.createdAt, updatedAt: ra.updatedAt
+          });
+        }
+      }
+      await storage.saveAnnotations?.(docId, localList);
     }
   }
 
-  /* ---------------- FAVORITES / TRASH ---------------- */
-  async toggleFav(id) {
-    await storage.toggleFavorite?.(id);
-    await this.loadHomeLists();
-    this.updateLanguageUI();
-  }
-  async softDeleteDoc(id) {
-    if (!confirm('Move this item to Trash?')) return;
-    await storage.softDeleteDocument?.(id);
-    await this.loadHomeLists();
-    this.updateLanguageUI();
-    this.toast('Moved to Trash','secondary');
-  }
-
-  /* ---------------- UI HELPERS ---------------- */
+  /* TOAST */
   toast(message, type='primary') {
     const el = document.getElementById('app-toast');
     const body = document.getElementById('app-toast-body');
@@ -603,18 +459,95 @@ class App {
     new bootstrap.Toast(el, { autohide: true, delay: 1800 }).show();
   }
 
+  /* WIRING */
   _wireHomeButtons() {
-    document.getElementById('btn-import')?.addEventListener('click', () => this.importMenu());
-    document.getElementById('btn-new-page')?.addEventListener('click', () => this.createNewTextPage());
-    document.getElementById('btn-save-note')?.addEventListener('click', () => this.saveQuickNote());
-    document.getElementById('btn-clear-note')?.addEventListener('click', () => { const t = document.getElementById('quick-note'); if (t) t.value=''; });
-    document.getElementById('btn-open-library')?.addEventListener('click', () => this.openLibraryDrawer());
-    document.getElementById('open-lib-mini')?.addEventListener('click', (e) => { e.preventDefault(); this.openLibraryDrawer(); });
-    document.getElementById('view-all')?.addEventListener('click', (e) => { e.preventDefault(); location.href='notes.html'; });
+    // Import
+    document.getElementById('qa-import')?.addEventListener('click', () => this.importMenu());
 
-    // Home cards:
-    document.getElementById('home-import')?.addEventListener('click', ()=> this.importMenu());
-    document.getElementById('btn-next-highlight')?.addEventListener('click', ()=> this.renderRandomHighlight());
+    // Quick Capture
+    document.getElementById('qc-save')?.addEventListener('click', () => this.saveQuickNote());
+    document.getElementById('qc-clear')?.addEventListener('click', () => {
+      const t = document.getElementById('qc-text'); if (t) t.value='';
+    });
+
+    // Alerts
+    document.getElementById('btn-enable-notifs')?.addEventListener('click', async ()=>{
+      if (!('Notification' in window)) { this.toast('Notifications not supported', 'secondary'); return; }
+      let perm = Notification.permission;
+      if (perm !== 'granted') { try { perm = await Notification.requestPermission(); } catch {} }
+      this.toast(perm === 'granted' ? 'Alerts enabled' : 'Alerts blocked', perm === 'granted' ? 'success' : 'secondary');
+    });
+  }
+
+  _wirePlanner() {
+    // Save task (fix focus warning before hide)
+    document.getElementById('planner-save')?.addEventListener('click', async ()=>{
+      const title = (document.getElementById('task-title')?.value || '').trim();
+      const lane  = document.getElementById('task-when')?.value || 'today';
+      if (!title) return;
+      const tasks = await (storage.getPlannerTasks?.() || []);
+      tasks.push({
+        id: storage.generateId ? storage.generateId('task') : `task_${Date.now()}`,
+        title, lane, done: false, createdAt: new Date().toISOString()
+      });
+      await storage.savePlannerTasks(tasks);
+      document.getElementById('task-title').value = '';
+      try { document.activeElement?.blur?.(); bootstrap.Modal.getOrCreateInstance(document.getElementById('plannerModal'))?.hide(); } catch {}
+      await this.renderPlanner();
+    });
+
+    // Filters
+    document.getElementById('planner-filter-today')?.addEventListener('click', ()=> this.renderPlanner('today'));
+    document.getElementById('planner-filter-week') ?.addEventListener('click', ()=> this.renderPlanner('week'));
+    document.getElementById('planner-filter-all')  ?.addEventListener('click', ()=> this.renderPlanner('all'));
+
+    // Toggle / delete (delegate)
+    const board = document.getElementById('planner-kanban');
+    board?.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('[data-action]'); if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const tasks = await (storage.getPlannerTasks?.() || []);
+      const idx = tasks.findIndex(t=>t.id===id); if (idx<0) return;
+      if (action === 'toggle') tasks[idx].done = !tasks[idx].done;
+      if (action === 'delete') tasks.splice(idx,1);
+      await storage.savePlannerTasks(tasks);
+      await this.renderPlanner();
+    });
+  }
+
+  async renderPlanner(filter='all') {
+    const tasks = await (storage.getPlannerTasks?.() || []);
+    const byLane = { today:[], week:[], later:[] };
+    tasks.forEach(t => {
+      const lane = ['today','week','later'].includes(t.lane) ? t.lane : 'today';
+      if (filter==='all' || filter===lane) byLane[lane].push(t);
+    });
+
+    const paint = (laneId, list) => {
+      const host = document.getElementById(`kanban-${laneId}`);
+      if (!host) return;
+      if (!list.length) { host.innerHTML = `<div class="text-muted small">No tasks</div>`; return; }
+      host.innerHTML = list.map(t => `
+        <div class="task-card ${t.done?'opacity-75':''}">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="task-title ${t.done?'done':''}">${t.title.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" data-action="toggle" data-id="${t.id}" title="Mark done/undone">
+                <i class="fa-regular ${t.done?'fa-circle-check':'fa-circle'}"></i>
+              </button>
+              <button class="btn btn-outline-danger" data-action="delete" data-id="${t.id}" title="Delete">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    paint('today', byLane.today);
+    paint('week',  byLane.week);
+    paint('later', byLane.later);
   }
 }
 

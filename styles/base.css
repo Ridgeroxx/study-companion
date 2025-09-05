@@ -18,3 +18,26 @@ a:active, button:active { transform: translateY(1px) }
 /* Tidy spacing and hover states */
 .sf-item .btn { --bs-btn-padding-y: .15rem; --bs-btn-padding-x: .45rem; }
 .small.text-muted { color: var(--bs-secondary-color) !important; }
+/* Full-viewport background host */
+#bgfx{
+  position: fixed;
+  inset: 0;
+  z-index: -1;         /* behind everything */
+  pointer-events: none;
+  /* Fallback gradient if WebGL is unavailable or scripts fail */
+  background:
+    radial-gradient(1200px 700px at -10% -20%, rgba(13,110,253,.10), transparent 60%),
+    radial-gradient(800px 600px at 110% 120%, rgba(32,201,151,.10), transparent 60%),
+    linear-gradient(180deg, var(--bs-body-bg), var(--bs-body-bg));
+}
+
+/* Ensure cards remain readable on top of the animated background */
+.panel-3d{
+  background: var(--card-bg);
+  backdrop-filter: saturate(1.0) blur(0px);
+}
+
+/* Reduce motion users: keep the fallback only */
+@media (prefers-reduced-motion: reduce){
+  #bgfx { background-attachment: fixed; } /* no animation initialized in JS */
+}

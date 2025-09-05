@@ -1,32 +1,29 @@
-// /js/sw-register.js
-(() => {
+// js/sw-register.js
+(async function ensureServiceWorker(){
   if (!('serviceWorker' in navigator)) return;
 
-  const SW_URL = '/sw.js'; // keep sw.js at site root for full scope
+  // Dev: disable SW on localhost/127.0.0.1 and clear any old caches
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      regs.forEach(r => r.unregister());
+      if (self.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      console.info('[SW] Disabled in dev and caches cleared.');
+    } catch(e) { console.warn('[SW] cleanup failed', e); }
+    return;
+  }
 
-  // Register after page load for best compatibility
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(SW_URL).then((reg) => {
-      console.log('[SW] registered:', reg.scope);
-
-      // Optional: detect updates and auto-activate
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw?.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            // A new version is installed and waiting
-            // Example: auto-activate immediately (skip waiting)
-            nw.postMessage({ type: 'SKIP_WAITING' });
-          }
-        });
-      });
-    }).catch((err) => console.warn('[SW] registration failed', err));
-  });
-
-  // Optional: react when a new SW takes control
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[SW] new service worker active');
-    // You can force-refresh if you want:
-    // location.reload();
-  });
+  // Prod: register normally
+  const url = '/sw.js';
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('javascript')) return;
+    await navigator.serviceWorker.register(url);
+    console.log('[SW] registered', url);
+  } catch (e) { console.warn('[SW] registration failed', e); }
 })();

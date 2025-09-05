@@ -1,9 +1,5 @@
-// /js/reader.js
-// Advanced, resilient reader with toolbar + stage rendering
-
+// /js/reader.js — Reader engine (no extra toolbar injected)
 import { storage } from './storage.js';
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function resolveContainer(cRef) {
   if (!cRef) return document.getElementById('reader-container') || document.querySelector('[data-reader-root]');
@@ -11,12 +7,10 @@ function resolveContainer(cRef) {
   return cRef;
 }
 
-// reader.js (top)
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
+    s.src = src; s.async = true;
     s.onload = resolve;
     s.onerror = () => reject(new Error('Failed to load ' + src));
     document.head.appendChild(s);
@@ -24,16 +18,10 @@ function loadScript(src) {
 }
 
 async function ensureEPUBDeps() {
-  if (!window.JSZip) {
-    await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
-  }
-  if (!window.ePub) {
-    await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js');
-  }
+  if (!window.JSZip) await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+  if (!window.ePub)  await loadScript('https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js');
 }
 
-
-// ensure pdf.js worker is configured even if page forgot to set it
 function ensurePdfWorker() {
   try {
     if (window.pdfjsLib && (!window.pdfjsLib.GlobalWorkerOptions?.workerSrc)) {
@@ -53,15 +41,12 @@ async function decodeBase64ToArrayBuffer(b64) {
 }
 
 async function getDocSource(doc) {
-  // 0) storage API – best (lets caller decide where bytes live)
   if (typeof storage?.getDocumentArrayBuffer === 'function') {
     try {
       const ab = await storage.getDocumentArrayBuffer(doc.id);
       if (ab && ab.byteLength > 0) return { arrayBuffer: ab };
     } catch {}
   }
-
-  // 1) localforage using common key patterns
   if (window.localforage && doc.fileKey) {
     const keysToTry = [doc.fileKey, `file:${doc.fileKey}`, `doc:${doc.fileKey}`];
     for (const k of keysToTry) {
@@ -74,23 +59,17 @@ async function getDocSource(doc) {
       } catch {}
     }
   }
-
-  // 2) embedded base64 (if your storage encoded it this way)
   if (doc.arrayBufferBase64) {
     const ab = await decodeBase64ToArrayBuffer(doc.arrayBufferBase64);
     if (ab && ab.byteLength > 0) return { arrayBuffer: ab };
   }
-
-  // 3) blob/url
   if (doc.blobUrl) return { url: doc.blobUrl };
-  if (doc.url) return { url: doc.url };
+  if (doc.url)     return { url: doc.url };
 
-  // 4) last resort: text body for txt/md
   try {
     const body = await storage.getDocumentBody?.(doc.id);
     if (body != null) return { arrayBuffer: new TextEncoder().encode(body).buffer };
   } catch {}
-
   return {};
 }
 
@@ -99,17 +78,17 @@ class Reader {
     this.currentDocument = null;
     this.container = null;
 
-    // PDF state
     this._pdf = null;
     this._pdfPages = [];
     this._io = null;
 
-    // EPUB state
     this._book = null;
     this._rendition = null;
+
+    this._fontScale = 1;
   }
 
-  async init(){ /* reserved */ }
+  async init(){}
 
   getCurrentDocument(){ return this.currentDocument; }
 
@@ -122,17 +101,8 @@ class Reader {
     if (!doc) throw new Error('Document not found');
     this.currentDocument = doc;
 
-    // Scaffold (toolbar + wrap + stage)
-    container.innerHTML = `
-      <div class="reader-toolbar">
-        <button class="btn btn-sm btn-outline-secondary" id="btn-prev" title="Previous"><i class="fa-solid fa-arrow-left"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" id="btn-next" title="Next"><i class="fa-solid fa-arrow-right"></i></button>
-        <div class="ms-2 small text-muted flex-grow-1 truncate" title="${doc.title || ''}">${doc.title || '(Untitled)'}</div>
-        <input id="reader-find" type="search" class="form-control form-control-sm" style="max-width:240px" placeholder="Find…"/>
-        <button class="btn btn-sm btn-outline-secondary" id="btn-find"><i class="fa-solid fa-magnifying-glass"></i></button>
-      </div>
-      <div id="viewer-wrap"><div id="stage" class="p-2"></div></div>
-    `;
+    // Only create the stage; DO NOT add another toolbar/wrap
+    container.innerHTML = `<div id="stage" class="p-2"></div>`;
     const stage = container.querySelector('#stage');
 
     const type = String(doc.type||'').toLowerCase();
@@ -148,37 +118,25 @@ class Reader {
       stage.innerHTML = `<div class="alert alert-danger m-3">Failed to open the document.</div>`;
     }
 
-    // Wire toolbar
-    container.querySelector('#btn-next')?.addEventListener('click', () => this.nextPage());
-    container.querySelector('#btn-prev')?.addEventListener('click', () => this.prevPage());
-    const findInput = container.querySelector('#reader-find');
-    container.querySelector('#btn-find')?.addEventListener('click', () => this.find(findInput?.value || ''));
-    findInput?.addEventListener('keypress', (e)=>{ if (e.key==='Enter') this.find(findInput.value||''); });
-
-    // Mark opened
     try {
       doc.lastOpened = new Date().toISOString();
       await storage.saveDocument?.(doc);
       await window.activity?.logDocOpened?.(doc);
     } catch {}
-
-
-
   }
 
-  /* ---------------- Navigation ---------------- */
   nextPage(){
     if (this._pdf) this._scrollPDF(1);
     else if (this._rendition) this._rendition.next();
-    else this.container.querySelector('#viewer-wrap')?.scrollBy({ top: 400, behavior:'smooth' });
+    else document.getElementById('viewer-wrap')?.scrollBy({ top: 400, behavior:'smooth' });
   }
   prevPage(){
     if (this._pdf) this._scrollPDF(-1);
     else if (this._rendition) this._rendition.prev();
-    else this.container.querySelector('#viewer-wrap')?.scrollBy({ top: -400, behavior:'smooth' });
+    else document.getElementById('viewer-wrap')?.scrollBy({ top: -400, behavior:'smooth' });
   }
   _scrollPDF(delta){
-    const wrap = this.container.querySelector('#viewer-wrap');
+    const wrap = document.getElementById('viewer-wrap');
     if (!wrap || !this._pdfPages.length) return;
     const top = wrap.scrollTop;
     let idx = 0;
@@ -190,102 +148,29 @@ class Reader {
     wrap.scrollTo({ top: this._pdfPages[idx].div.offsetTop - 24, behavior:'smooth' });
   }
 
-  /* ---------------- Find ---------------- */
-  async find(q){
-    const query = (q||'').trim();
-    if (!query) return;
-
-    if (this._rendition) {
-      // ePub.js text search is limited; best-effort only
-      try {
-        const res = await this._book?.find?.(query);
-        if (Array.isArray(res) && res[0]?.cfi) {
-          await this._rendition.display(res[0].cfi);
-          return;
-        }
-      } catch {}
-      this._toast('EPUB search is limited', 'secondary');
-      return;
-    }
-
-    if (this._pdf) {
-      for (let i=0;i<this._pdfPages.length;i++){
-        const info = this._pdfPages[i];
-        if (!info.text) {
-          const page = await this._pdf.getPage(info.pageNum);
-          const txt = await page.getTextContent();
-          info.text = txt.items.map(t => t.str).join(' ');
-        }
-        if ((info.text||'').toLowerCase().includes(query.toLowerCase())) {
-          await this._ensurePDFRendered(info);
-          const wrap = this.container.querySelector('#viewer-wrap');
-          wrap?.scrollTo({ top: info.div.offsetTop - 24, behavior:'smooth' });
-          return;
-        }
-      }
-      this._toast('No match found', 'secondary');
-      return;
-    }
-
-    // TEXT / MD
-    const t = this.container.querySelector('#stage');
-    const hit = (t?.textContent||'').toLowerCase().indexOf(query.toLowerCase());
-    if (hit >= 0) {
-      t.scrollIntoView({ behavior:'smooth', block:'start' });
-    } else {
-      this._toast('No match found','secondary');
-    }
-  }
-
-  /* ---------------- PDF ---------------- */
   async _renderPDF(source, stage){
     ensurePdfWorker();
     if (!window.pdfjsLib) { stage.innerHTML = `<div class="p-3 text-danger">PDF.js not loaded.</div>`; return; }
 
-    // unify to ArrayBuffer so we can validate and give better errors
     let ab = source.arrayBuffer;
     if (!ab && source.url) {
       try {
         const res = await fetch(source.url, { credentials: 'same-origin' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const ct = (res.headers.get('content-type') || '').toLowerCase();
         ab = await res.arrayBuffer();
-
-        // quick signature check – a real PDF begins with "%PDF-"
-        const header = new TextDecoder('ascii').decode(new Uint8Array(ab.slice(0, 5)));
-        const isPdfSig = header === '%PDF-';
-        if (!isPdfSig && !ct.includes('pdf')) {
-          throw new Error('Not a PDF (content looks like non-PDF or an HTML error page).');
-        }
       } catch (err) {
-        stage.innerHTML = `<div class="alert alert-danger m-3">
-          Unable to fetch PDF bytes. ${err?.message ? `(${err.message})` : ''}
-          <div class="small mt-1 text-muted">The link may be invalid, blocked by CORS, or not actually a PDF.</div>
-        </div>`;
+        stage.innerHTML = `<div class="alert alert-danger m-3">Unable to fetch PDF. ${err?.message||''}</div>`;
         return;
       }
     }
-
-    if (!ab || !ab.byteLength) {
-      stage.innerHTML = `<div class="p-3 text-warning">We couldn’t find this PDF’s data. Re-import the document.</div>`;
-      return;
-    }
+    if (!ab || !ab.byteLength) { stage.innerHTML = `<div class="p-3 text-warning">Missing PDF data. Re-import the document.</div>`; return; }
 
     this._destroyAny();
     let pdf;
-    try {
-      pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
-    } catch (err) {
-      const msg = /Invalid PDF structure/i.test(String(err))
-        ? 'Invalid PDF data — the file is corrupt or not a real PDF.'
-        : 'Failed to open PDF.';
-      console.error(err);
-      stage.innerHTML = `<div class="alert alert-danger m-3">${msg}</div>`;
-      return;
-    }
+    try { pdf = await window.pdfjsLib.getDocument({ data: ab }).promise; }
+    catch (err) { console.error(err); stage.innerHTML = `<div class="alert alert-danger m-3">Failed to open PDF.</div>`; return; }
 
-    this._pdf = pdf;
-    this._pdfPages = [];
+    this._pdf = pdf; this._pdfPages = [];
     stage.innerHTML = '';
 
     for (let p=1; p<=pdf.numPages; p++){
@@ -299,9 +184,8 @@ class Reader {
       this._pdfPages.push({ pageNum: p, div, rendered:false, text:null });
     }
 
-    // Lazy render
     this._io?.disconnect();
-    const wrap = this.container.querySelector('#viewer-wrap');
+    const wrap = document.getElementById('viewer-wrap');
     this._io = new IntersectionObserver((entries)=>{
       entries.forEach(e => { if (e.isIntersecting){
         const info = this._pdfPages.find(x=>x.div===e.target);
@@ -334,10 +218,9 @@ class Reader {
     info.rendered = true;
   }
 
-  /* ---------------- EPUB ---------------- */
   async _renderEPUB(source, stage){
     if (!window.ePub) { stage.innerHTML = `<div class="p-3 text-danger">EPUB library not loaded.</div>`; return; }
-    if (!source.arrayBuffer && !source.url) { stage.innerHTML = `<div class="p-3 text-warning">This EPUB is missing. Re-import the document.</div>`; return; }
+    if (!source.arrayBuffer && !source.url) { stage.innerHTML = `<div class="p-3 text-warning">Missing EPUB bytes. Re-import the document.</div>`; return; }
 
     this._destroyAny();
     stage.innerHTML = '';
@@ -366,25 +249,31 @@ class Reader {
 
     const cfi = this.currentDocument?.location?.cfi;
     await rendition.display(cfi || undefined);
+
+    // Re-apply saved highlights on open
+try {
+  const doc = this.currentDocument;
+  const anns = await (storage.getAnnotations?.(doc.id) || []);
+  const highs = (anns||[]).filter(a => a.kind === 'highlight' && a.cfi);
+  highs.forEach(h => {
+    try {
+      this._book?.annotations?.add('highlight', h.cfi, {}, null, 'hl-persist');
+    } catch {}
+  });
+} catch {}
+
   }
 
-  /* ---------------- DOCX ---------------- */
   async _renderDOCX(source, stage){
     if (!window.mammoth) { stage.innerHTML = `<div class="p-3 text-danger">DOCX viewer not loaded.</div>`; return; }
     let ab = source.arrayBuffer;
-    if (!ab && source.url) {
-      try { ab = await (await fetch(source.url)).arrayBuffer(); } catch {}
-    }
-    if (!ab || !ab.byteLength) {
-      stage.innerHTML = `<div class="p-3 text-warning">This DOCX file is missing. Re-import the document.</div>`;
-      return;
-    }
+    if (!ab && source.url) { try { ab = await (await fetch(source.url)).arrayBuffer(); } catch {} }
+    if (!ab || !ab.byteLength) { stage.innerHTML = `<div class="p-3 text-warning">Missing DOCX bytes. Re-import the document.</div>`; return; }
     const result = await window.mammoth.convertToHtml({ arrayBuffer: ab });
     stage.innerHTML = `<article class="container py-3">${result.value || '<p>(Empty)</p>'}</article>`;
   }
 
-  /* ---------------- TEXT / MD ---------------- */
-  async _renderTEXT(source, stage, kind='txt'){
+    async _renderTEXT(source, stage, kind='txt'){
     let text = '';
     if (source.arrayBuffer && source.arrayBuffer.byteLength) {
       text = new TextDecoder().decode(source.arrayBuffer);
@@ -393,6 +282,18 @@ class Reader {
     } else {
       try { text = await storage.getDocumentBody?.(this.currentDocument.id) || ''; } catch {}
     }
+
+    // 🔧 Fallback: no body? show annotations as content
+    if (!text || !text.trim()) {
+      try {
+        const anns = await storage.getAnnotations?.(this.currentDocument.id) || [];
+        if (anns.length) {
+          const lines = anns.map(a => (a.text || a.quote || a.note || '').trim()).filter(Boolean);
+          text = lines.join('\n\n');
+        }
+      } catch {}
+    }
+
     const isMd = /^(md|markdown)$/i.test(kind||'');
     if (isMd && window.marked) {
       stage.innerHTML = `<article class="container py-3">${window.marked.parse(text||'')}</article>`;
@@ -405,9 +306,19 @@ class Reader {
       pre.textContent = text || '(empty)';
       stage.appendChild(pre);
     }
+
+    // 🔧 If deep-linked to a note id, signal page code to open the drawer + load it
+    try {
+      const params = new URLSearchParams(location.search);
+      const noteId = params.get('note');
+      if (noteId) {
+        // let the page script handle the offcanvas open & editor focus
+        window.dispatchEvent(new CustomEvent('reader:openNote', { detail: { noteId } }));
+      }
+    } catch {}
   }
 
-  /* ---------------- Utilities ---------------- */
+
   _toast(message, type='primary'){
     const el = document.getElementById('app-toast');
     const body = document.getElementById('app-toast-body');
@@ -425,7 +336,7 @@ class Reader {
     this._pdf = null; this._pdfPages = [];
   }
 
-  /* ---------------- Import shims (for menus on other pages) ---------------- */
+  // Import helpers used by other pages
   async _pickAndImport(accept) {
     return new Promise((resolve)=>{
       const input=document.createElement('input');
@@ -437,7 +348,7 @@ class Reader {
     });
   }
   importEpub(){ return this._pickAndImport('.epub'); }
-  importPdf(){ return this._pickAndImport('.pdf'); }
+  importPdf(){  return this._pickAndImport('.pdf'); }
   importDocx(){ return this._pickAndImport('.docx'); }
   importText(){ return this._pickAndImport('.txt,.md'); }
 }

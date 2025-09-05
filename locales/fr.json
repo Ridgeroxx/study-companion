@@ -1,0 +1,56 @@
+{
+  "quick_actions": "Actions rapides",
+  "import": "Importer",
+  "continue": "Continuer",
+  "record_talk": "Enregistrer le discours",
+
+  "study_planner": "Plan d’étude",
+  "add": "Ajouter",
+  "today": "Aujourd’hui",
+  "this_week": "Cette semaine",
+  "later": "Plus tard",
+  "all": "Tous",
+
+  "upcoming": "À venir",
+  "enable_alerts": "Activer les alertes",
+
+  "focus_timer": "Minuteur de focus",
+  "stats_streak": "Statistiques & série",
+
+  "smart_folders": "Dossiers intelligents",
+  "open_notes": "Ouvrir les notes",
+  "tags": "Étiquettes",
+  "from_highlights": "D’après les surlignages récents",
+
+  "masonry": "Surlignages",
+  "recent_quotes": "Vos citations & notes récentes",
+
+  "quick_capture": "Capture rapide",
+  "clear": "Effacer",
+  "save": "Enregistrer",
+
+  "schedule": "Agenda",
+  "meetings": "Réunions",
+  "convention": "Assemblée",
+  "home": "Accueil",
+  "library": "Bibliothèque",
+  "notes": "Notes",
+  "reader": "Lecteur",
+  "settings": "Paramètres",
+
+  "import_documents": "Importer des documents",
+  "drag_drop": "Glissez-déposez les fichiers ici",
+  "choose_files": "Choisir des fichiers",
+  "recently_added": "Récemment ajoutés",
+  "done": "Terminé",
+
+  "add_task": "Ajouter une tâche",
+  "title": "Titre",
+  "when": "Quand",
+  "cancel": "Annuler",
+
+  "login": "Connexion",
+  "register": "Créer un compte",
+  "logout": "Déconnexion",
+  "sync_now": "Synchroniser"
+}

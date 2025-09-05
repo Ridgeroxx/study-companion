@@ -2,27 +2,23 @@
 <html lang="en" data-bs-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Convention • Study Companion</title>
 
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E" />
-
-  <!-- CSS libs -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
-
-  <!-- PWA -->
+  <!-- PWA / Theme -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#136FF2">
   <meta name="mobile-web-app-capable" content="yes">
-  <!-- iOS PWA support -->
+  <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="logo.png">
   <meta name="color-scheme" content="light dark">
 
-  <!-- CSP (allow your CDNs) -->
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' rx='12' fill='%23136FF2'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-family='Arial' font-size='38' fill='white'%3ESC%3C/text%3E%3C/svg%3E" />
+
+  <!-- CSP -->
   <meta http-equiv="Content-Security-Policy"
   content="
     default-src 'self';
@@ -38,30 +34,50 @@
     upgrade-insecure-requests;
   ">
 
+  <!-- CSS libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
   <!-- Vendor core -->
-<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-  if (window['pdfjsLib']) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-</script>
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.92/dist/epub.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <style>
+    /* Compat */
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
     :root{
       --nav-h:56px;
       --side-w:280px;
       --right-w:380px;
     }
     html, body { height:100% }
-    body { overflow:hidden; background:var(--bs-body-bg); }
+    body { overflow:hidden; background:var(--bs-body-bg); margin:0; }
+
+    /* Topbar (3D) */
+    .nav-3d{
+      position: sticky; top: 0; z-index: 1030;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.62));
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      min-height: var(--nav-h);
+    }
+    [data-bs-theme="dark"] .nav-3d{
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-color: rgba(255,255,255,.14);
+    }
+    .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; font-weight:800; letter-spacing:.2px; }
+    .brand img { width:28px; height:28px; border-radius:6px; }
 
     /* Ambient */
     .app-ambient { position:fixed; inset:-12vh -12vw; z-index:-1; pointer-events:none; filter: blur(40px) saturate(1.06); }
@@ -78,12 +94,11 @@
     .center{ overflow:auto; }
     .rightbar{ border-left:1px solid #e9ecef; background: linear-gradient(180deg, rgba(13,110,253,.04), rgba(13,110,253,.02)); overflow:auto; }
 
-    /* Mobile: collapse sidebars into offcanvas */
+    /* Mobile: collapse sidebars */
     @media (max-width: 992px){
       body { overflow:auto; }
       .shell{ grid-template-columns: 1fr; grid-template-rows: var(--nav-h) 1fr; height:auto; min-height:100vh; }
       .sidebar, .rightbar { display:none; }
-      /* Tone down blobs on small screens */
       .app-ambient{ display:none; }
     }
 
@@ -99,12 +114,34 @@
     .hero .title{ font-weight:800; letter-spacing:.2px; font-size: clamp(18px, 1.5vw, 22px); }
     .glass-card{ border:1px solid #e9ecef; border-radius:14px; background: rgba(255,255,255,.82); box-shadow: 0 10px 30px rgba(0,0,0,.08); }
     .section-title{ font-weight:700; letter-spacing:.2px; }
-
     .toolbar-notes .btn{ --bs-btn-padding-y:.2rem; --bs-btn-padding-x:.5rem; }
     .note-item{ border:1px solid #e9ecef; border-radius:10px; padding:.75rem; margin-bottom:.5rem; background:#fff; }
     .small-muted{ font-size:.8rem; color:#7c8793; }
 
-    /* -------- Dark theme readability -------- */
+    /* Bottom nav */
+    .bottom-nav{
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
+      display:flex; z-index: 1040;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.82);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    [data-bs-theme="dark"] .bottom-nav{
+      background: rgba(0,0,0,.35);
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .bottom-nav a{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; font-size:12px; text-decoration:none; color:inherit; opacity:.85;
+    }
+    .bottom-nav a .fa-solid{ font-size:18px; }
+    .bottom-nav a.active{ font-weight:700; opacity:1; }
+
+    /* Avoid overlap with bottom nav (mobile) */
+    .with-bottom-nav { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+    /* -------- Dark theme polish -------- */
     [data-bs-theme="dark"] {
       --surface-1: rgba(255,255,255,.06);
       --surface-2: rgba(255,255,255,.10);
@@ -123,66 +160,59 @@
     [data-bs-theme="dark"] .small-muted { color: var(--muted-1) !important; }
     [data-bs-theme="dark"] .side-list .row-item:hover{ background: rgba(255,255,255,.08); }
     [data-bs-theme="dark"] .app-ambient { opacity:.55; filter: blur(36px) saturate(1); mix-blend-mode: normal; }
-
   </style>
+
+  <!-- Set theme ASAP -->
+  <script>
+    (function(){
+      try {
+        const init = localStorage.getItem('app_theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', init);
+      } catch {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app-ambient"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
 
   <div class="shell">
     <!-- Top bar -->
-    <nav class="navbar bg-light border-bottom">
+    <nav class="navbar nav-3d">
       <div class="container-fluid">
         <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-outline-secondary btn-sm" href="app.html" title="Home"><i class="fa-solid fa-house"></i></a>
-
-          <!-- Mobile: open left / right offcanvas -->
-          <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#leftDrawer" title="Sidebar">
-            <i class="fa-solid fa-bars-staggered"></i>
-          </button>
-          <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#rightDrawer" title="Notes">
-            <i class="fa-regular fa-note-sticky"></i>
-          </button>
-
-          <span class="fw-semibold">Convention</span>
+          <!-- Brand -->
+          <a class="brand" href="app.html" aria-label="Study Companion" title="Study Companion">
+            <img src="logo.png" alt="Logo"><span>Study Companion</span>
+          </a>
         </div>
+
         <div class="d-flex align-items-center gap-2">
-          <!-- Language uses app.js bindings (ids) -->
-          <button class="btn btn-sm btn-outline-secondary" id="lang-en">EN</button>
-          <button class="btn btn-sm btn-outline-secondary" id="lang-es">ES</button>
+          <!-- Language -->
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    aria-label="Change language" title="Change language">
+              <i class="fa-solid fa-language me-1" aria-hidden="true"></i>
+              <span id="current-language">EN</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-label="Language menu">
+              <li><button id="lang-en" class="dropdown-item" title="Switch to English">English</button></li>
+              <li><button id="lang-es" class="dropdown-item" title="Cambiar a Español">Español</button></li>
+            </ul>
+          </div>
 
-          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
-
-          <a class="btn btn-sm btn-outline-primary d-none d-lg-inline" href="library.html" title="Library"><i class="fa-solid fa-books"></i></a>
-          <a class="btn btn-sm btn-outline-primary d-none d-lg-inline" href="reader.html" title="Reader"><i class="fa-solid fa-book-open"></i></a>
-          <a class="btn btn-sm btn-outline-secondary" href="settings.html" title="Settings"><i class="fas fa-gear"></i></a>
+          <!-- Theme -->
+          <button class="btn btn-sm btn-outline-secondary" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+            <i class="fas fa-moon" aria-hidden="true"></i><span class="visually-hidden">Toggle theme</span>
+          </button>
         </div>
       </div>
     </nav>
 
-    <!-- Left sidebar -->
-    <aside class="sidebar">
-      <div class="ws-switch">
-        <span class="ws-dot"></span>
-        <div>
-          <div class="fw-semibold">My Workspace</div>
-          <div class="small text-muted">Personal</div>
-        </div>
-      </div>
-
-      <div class="side-title">Continue</div>
-      <div id="side-recent" class="side-list small text-muted px-2">Loading…</div>
-
-      <div class="side-title">Favorites</div>
-      <div id="side-favorites" class="side-list small text-muted px-2">No favorites yet.</div>
-
-      <div class="side-title">Pages</div>
-      <div id="side-pages" class="side-list small text-muted px-2">Loading…</div>
-    </aside>
-
     <!-- Center -->
     <main class="center">
-      <div class="container-fluid py-3">
+      <div class="container-fluid py-3 with-bottom-nav">
         <div class="hero mb-3">
           <div class="d-flex align-items-center justify-content-between">
             <div>
@@ -191,16 +221,18 @@
             </div>
             <div class="d-flex gap-2">
               <div class="form-check form-switch mt-1">
-                <input class="form-check-input" type="checkbox" id="convention-enabled">
+                <input class="form-check-input" type="checkbox" id="convention-enabled" aria-label="Enable convention mode">
                 <label class="form-check-label small" for="convention-enabled">Enabled</label>
               </div>
               <div class="btn-group">
-                <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="fa-solid fa-upload me-1"></i>Import</button>
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-label="Import">
+                  <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Import
+                </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="#" onclick="reader.importEpub()"><i class="fa-solid fa-book me-2"></i>EPUB</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="reader.importPdf()"><i class="fa-solid fa-file-pdf me-2"></i>PDF</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="reader.importDocx()"><i class="fa-solid fa-file-word me-2"></i>Word (.docx)</a></li>
-                  <li><a class="dropdown-item" href="#" onclick="reader.importText()"><i class="fa-solid fa-file-lines me-2"></i>Text</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="reader.importEpub()" aria-label="Import EPUB"><i class="fa-solid fa-book me-2" aria-hidden="true"></i>EPUB</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="reader.importPdf()" aria-label="Import PDF"><i class="fa-solid fa-file-pdf me-2" aria-hidden="true"></i>PDF</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="reader.importDocx()" aria-label="Import Word"><i class="fa-solid fa-file-word me-2" aria-hidden="true"></i>Word (.docx)</a></li>
+                  <li><a class="dropdown-item" href="#" onclick="reader.importText()" aria-label="Import Text"><i class="fa-solid fa-file-lines me-2" aria-hidden="true"></i>Text</a></li>
                 </ul>
               </div>
             </div>
@@ -209,15 +241,15 @@
           <div id="convention-config" class="mt-3">
             <div class="row g-2">
               <div class="col-sm-6 col-md-4 col-lg-3">
-                <label class="form-label">Start Date</label>
+                <label class="form-label" for="convention-start">Start Date</label>
                 <input type="date" id="convention-start" class="form-control"/>
               </div>
               <div class="col-sm-6 col-md-4 col-lg-3">
-                <label class="form-label">End Date</label>
+                <label class="form-label" for="convention-end">End Date</label>
                 <input type="date" id="convention-end" class="form-control"/>
               </div>
               <div class="col-md-4 col-lg-3 d-flex align-items-end">
-                <button class="btn btn-outline-primary w-100" id="btn-add-session"><i class="fa-solid fa-plus"></i> Add Session</button>
+                <button class="btn btn-outline-primary w-100" id="btn-add-session" aria-label="Add session"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Session</button>
               </div>
             </div>
           </div>
@@ -229,7 +261,7 @@
             <div class="section-title">Sessions</div>
             <div class="small text-muted">Click to edit</div>
           </div>
-          <div id="convention-sessions" class="small text-muted">No sessions yet.</div>
+          <div id="convention-sessions" class="small text-muted" aria-live="polite">No sessions yet.</div>
         </div>
 
         <!-- Editor -->
@@ -239,47 +271,51 @@
             <div class="small text-muted">Use / menu, toolbar, and preview</div>
           </div>
 
-          <div class="row g-3">
+          <div class="row g-3" role="group" aria-label="Convention note metadata">
             <div class="col-md-5 col-lg-4">
-              <label class="form-label">Title</label>
+              <label class="form-label" for="meeting-title">Title</label>
               <input id="meeting-title" class="form-control" placeholder="e.g., Session Highlights"/>
             </div>
             <div class="col-md-3 col-lg-2">
-              <label class="form-label">Date</label>
+              <label class="form-label" for="meeting-date">Date</label>
               <input id="meeting-date" type="date" class="form-control"/>
             </div>
             <div class="col-md-2 col-lg-2">
-              <label class="form-label">Type</label>
+              <label class="form-label" for="meeting-type">Type</label>
               <select id="meeting-type" class="form-select">
                 <option value="convention">Convention</option>
               </select>
             </div>
             <div class="col-md-2 col-lg-2 d-flex align-items-end">
-              <button class="btn btn-outline-secondary w-100" id="btn-insert-scripture"><i class="fa-solid fa-book-bible me-1"></i> Scripture</button>
+              <button class="btn btn-outline-secondary w-100" id="btn-insert-scripture" aria-label="Insert scripture reference">
+                <i class="fa-solid fa-book-bible me-1" aria-hidden="true"></i> Scripture
+              </button>
             </div>
           </div>
 
           <div class="mt-2">
-            <div class="toolbar-notes d-flex flex-wrap gap-1 mb-2">
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('# ', '')">H1</button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('## ', '')">H2</button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('- ', '')"><i class="fa-solid fa-list-ul"></i></button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('- [ ] ', '')"><i class="fa-regular fa-square"></i></button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('**','**')"><b>B</b></button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('_','_')"><i>I</i></button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('> ','')"><i class="fa-solid fa-quote-left"></i></button>
-              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('\n---\n','')"><i class="fa-solid fa-grip-lines"></i></button>
+            <div class="toolbar-notes d-flex flex-wrap gap-1 mb-2" role="group" aria-label="Formatting toolbar">
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('# ', '')" title="Heading 1" aria-label="Heading 1">H1</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('## ', '')" title="Heading 2" aria-label="Heading 2">H2</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('- ', '')" title="Bulleted list" aria-label="Bulleted list"><i class="fa-solid fa-list-ul" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('- [ ] ', '')" title="Task list" aria-label="Task list"><i class="fa-regular fa-square" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('**','**')" title="Bold" aria-label="Bold"><b>B</b></button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('_','_')" title="Italic" aria-label="Italic"><i>I</i></button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('> ','')" title="Quote" aria-label="Quote"><i class="fa-solid fa-quote-left" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="app.insertMarkdown('\n---\n','')" title="Divider" aria-label="Divider"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>
             </div>
+
+            <label for="meeting-content" class="visually-hidden">Convention note content</label>
             <textarea id="meeting-content" class="form-control" rows="10" placeholder="Type your note… Use / for commands."></textarea>
 
             <div class="d-flex justify-content-between align-items-center mt-2">
               <div class="small text-muted">Preview</div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-danger" onclick="notes.deleteMeetingNote?.()"><i class="fa-regular fa-trash-can"></i></button>
-                <button class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()"><i class="fa-solid fa-save me-1"></i>Save</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="notes.deleteMeetingNote?.()" title="Delete note" aria-label="Delete note"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
+                <button class="btn btn-sm btn-primary" onclick="notes.saveMeetingNote?.()" title="Save note" aria-label="Save note"><i class="fa-solid fa-save me-1" aria-hidden="true"></i>Save</button>
               </div>
             </div>
-            <div id="markdown-preview" class="border rounded p-2 bg-white small mt-1" style="min-height:80px;">Nothing yet.</div>
+            <div id="markdown-preview" class="border rounded p-2 bg-white small mt-1" style="min-height:80px;" aria-live="polite">Nothing yet.</div>
           </div>
         </div>
 
@@ -289,7 +325,7 @@
             <div class="section-title">My Convention Notes</div>
             <div class="small text-muted">Recent first</div>
           </div>
-          <div id="meeting-notes-list" class="small text-muted">Loading…</div>
+          <div id="meeting-notes-list" class="small text-muted" aria-live="polite">Loading…</div>
         </div>
       </div>
     </main>
@@ -297,8 +333,10 @@
     <!-- Right notes column -->
     <aside class="rightbar p-3">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0"><i class="fa-solid fa-sticky-note me-1"></i> Notes (quick view)</h6>
-        <button class="btn btn-sm btn-outline-primary" onclick="location.href='reader.html'"><i class="fa-solid fa-book-open"></i></button>
+        <h6 class="mb-0"><i class="fa-solid fa-sticky-note me-1" aria-hidden="true"></i> Notes (quick view)</h6>
+        <button class="btn btn-sm btn-outline-primary" onclick="location.href='reader.html'" title="Open Reader" aria-label="Open Reader">
+          <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+        </button>
       </div>
       <div id="right-notes" class="small text-muted">
         Create or select a document in the Reader to see “Current Book Notes” here.
@@ -306,10 +344,13 @@
     </aside>
   </div>
 
-  <!-- Session Modal (reuses schedule.* handlers) -->
-  <div class="modal fade" id="conventionSessionModal" tabindex="-1" aria-hidden="true">
+  <!-- Session Modal -->
+  <div class="modal fade" id="conventionSessionModal" tabindex="-1" aria-hidden="true" aria-labelledby="convSessionTitle">
     <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Convention Session</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title" id="convSessionTitle">Convention Session</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
       <div class="modal-body">
         <div class="mb-3"><label for="session-title" class="form-label">Title:</label><input type="text" class="form-control" id="session-title" /></div>
         <div class="mb-3"><label for="session-speaker" class="form-label">Speaker:</label><input type="text" class="form-control" id="session-speaker" /></div>
@@ -328,10 +369,10 @@
   </div>
 
   <!-- Offcanvas Library -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="libraryDrawer">
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="libraryDrawer" aria-labelledby="libraryDrawerTitle">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="fa-solid fa-books me-2"></i>Your Library</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+      <h5 class="offcanvas-title" id="libraryDrawerTitle"><i class="fa-solid fa-books me-2" aria-hidden="true"></i>Your Library</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body" id="library-list">
       <div class="text-muted">Loading…</div>
@@ -339,26 +380,26 @@
   </div>
 
   <!-- Offcanvas Left (Sidebar on mobile) -->
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="leftDrawer">
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="leftDrawer" aria-labelledby="leftDrawerTitle">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="fa-solid fa-bars-staggered me-2"></i>Sidebar</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+      <h5 class="offcanvas-title" id="leftDrawerTitle"><i class="fa-solid fa-bars-staggered me-2" aria-hidden="true"></i>Sidebar</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
       <div class="side-title">Continue</div>
-      <div id="ld-recent" class="side-list small text-muted">Loading…</div>
+      <div id="ld-recent" class="side-list small text-muted" aria-live="polite">Loading…</div>
       <div class="side-title mt-3">Favorites</div>
-      <div id="ld-favorites" class="side-list small text-muted">Loading…</div>
+      <div id="ld-favorites" class="side-list small text-muted" aria-live="polite">Loading…</div>
       <div class="side-title mt-3">Pages</div>
-      <div id="ld-pages" class="side-list small text-muted">Loading…</div>
+      <div id="ld-pages" class="side-list small text-muted" aria-live="polite">Loading…</div>
     </div>
   </div>
 
   <!-- Offcanvas Right (Notes on mobile) -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="rightDrawer">
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="rightDrawer" aria-labelledby="rightDrawerTitle">
     <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="fa-regular fa-note-sticky me-2"></i>Notes</h5>
-      <button class="btn-close" data-bs-dismiss="offcanvas"></button>
+      <h5 class="offcanvas-title" id="rightDrawerTitle"><i class="fa-regular fa-note-sticky me-2" aria-hidden="true"></i>Notes</h5>
+      <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body" id="rd-notes">
       <div class="text-muted small">Loading…</div>
@@ -370,10 +411,11 @@
     <div id="app-toast" class="toast align-items-center text-bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body" id="app-toast-body">Action completed.</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close toast"></button>
       </div>
     </div>
   </div>
+
   <!-- Bottom Navigation -->
   <nav class="bottom-nav" role="navigation" aria-label="Primary">
     <a href="app.html" data-page="home" title="Home">
@@ -392,7 +434,7 @@
       <i class="fa-solid fa-grip" aria-hidden="true"></i><span>Reader</span>
     </a>
     <a href="settings.html" data-page="settings" title="Settings">
-    <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
+      <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
     </a>
   </nav>
 
@@ -401,11 +443,16 @@
 
   <!-- App entry -->
   <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/reminders.js"></script>
+  <script type="module" src="sw-register.js"></script>
+  <script type="module" src="sw.js"></script>
   <script type="module">
     import { storage } from './js/storage.js';
     import { reader } from './js/reader.js';
     import { notes } from './js/notes.js';
     import { schedule } from './js/schedule.js';
+
+    const THEME_KEY='app_theme', LANG_KEY='app_lang';
 
     const toast = (msg, type='primary') => {
       const el = document.getElementById('app-toast'); const body = document.getElementById('app-toast-body');
@@ -413,58 +460,73 @@
       new bootstrap.Toast(el, {autohide:true, delay:2000}).show();
     };
 
+    // Language dropdown badge
+    try {
+      const initLang = (localStorage.getItem(LANG_KEY) || 'EN').toUpperCase();
+      const langEl = document.getElementById('current-language'); if (langEl) langEl.textContent = initLang;
+    } catch {}
+    document.getElementById('lang-en')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'EN')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='EN'; });
+    document.getElementById('lang-es')?.addEventListener('click',()=>{ try{localStorage.setItem(LANG_KEY,'ES')}catch{}; const el=document.getElementById('current-language'); if(el) el.textContent='ES'; });
+
+    // Theme toggle
+    document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
+      const curr=document.documentElement.getAttribute('data-bs-theme')||'light';
+      const next=curr==='light'?'dark':'light';
+      document.documentElement.setAttribute('data-bs-theme', next);
+      try{localStorage.setItem(THEME_KEY,next)}catch{}
+    });
+
     // Sidebar lists (desktop + mobile)
     async function loadSidebar(){
-      const all = await storage.getActiveDocuments() || await storage.getDocuments() || [];
+      const all = (await storage.getActiveDocuments?.()) || (await storage.getDocuments?.()) || [];
       const active = all.filter(d=>!d.deletedAt);
       const recent = [...active].sort((a,b)=> (new Date(b.lastOpened||b.updatedAt||b.createdAt||0))-(new Date(a.lastOpened||a.updatedAt||a.createdAt||0)));
-
       const cont = recent[0];
 
       const sRecent = document.getElementById('side-recent');
-      sRecent && (sRecent.innerHTML = cont ? `
+      if (sRecent) sRecent.innerHTML = cont ? `
         <div class="row-item">
           <div class="d-flex align-items-center gap-2 text-truncate">
-            <i class="fa-solid fa-book-open text-muted"></i>
+            <i class="fa-solid fa-book-open text-muted" aria-hidden="true"></i>
             <span class="text-truncate">${cont.title||'(Untitled)'}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="openDoc('${cont.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <button class="btn btn-outline-primary" onclick="openDoc('${cont.id}')" title="Open" aria-label="Open"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
           </div>
-        </div>` : `<div class="small text-muted">Nothing yet.</div>`);
+        </div>` : `<div class="small text-muted">Nothing yet.</div>`;
 
-      const favIds = await storage.getFavorites();
+      const favIds = (await storage.getFavorites?.()) || [];
       const favDocs = active.filter(d => favIds.includes(d.id));
       const favHTML = favDocs.length ? favDocs.map(d => `
         <div class="row-item">
           <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
-            <i class="fa-solid fa-star text-warning"></i>
+            <i class="fa-solid fa-star text-warning" aria-hidden="true"></i>
             <span class="text-truncate">${d.title||'(Untitled)'}</span>
           </div>
           <div class="side-actions btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-            <button class="btn btn-outline-warning" onclick="toggleFav('${d.id}')"><i class="fa-solid fa-star"></i></button>
+            <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')" title="Open" aria-label="Open"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
+            <button class="btn btn-outline-warning" onclick="toggleFav('${d.id}')" title="Unfavorite" aria-label="Unfavorite"><i class="fa-solid fa-star" aria-hidden="true"></i></button>
           </div>
         </div>`).join('') : `<div class="small text-muted">No favorites yet.</div>`;
       const favBox = document.getElementById('side-favorites');
-      favBox && (favBox.innerHTML = favHTML);
+      if (favBox) favBox.innerHTML = favHTML;
 
       const pagesHTML = active
         .sort((a,b)=>(a.title||'').localeCompare(b.title||''))  
         .map(d => `
           <div class="row-item">
             <div class="d-flex align-items-center gap-2 text-truncate" title="${d.title||'(Untitled)'}">
-              <i class="fa-regular fa-file-lines text-muted"></i>
+              <i class="fa-regular fa-file-lines text-muted" aria-hidden="true"></i>
               <span class="text-truncate">${d.title||'(Untitled)'}</span>
             </div>
             <div class="side-actions btn-group btn-group-sm">
-              <button class="btn btn-outline-warning" title="Favorite" onclick="toggleFav('${d.id}')"><i class="fa-regular fa-star"></i></button>
-              <button class="btn btn-outline-primary" title="Open" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-              <button class="btn btn-outline-danger" title="Trash" onclick="softDeleteDoc('${d.id}')"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn btn-outline-warning" title="Favorite" aria-label="Favorite" onclick="toggleFav('${d.id}')"><i class="fa-regular fa-star" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-primary" title="Open" aria-label="Open" onclick="openDoc('${d.id}')"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-danger" title="Move to Trash" aria-label="Move to Trash" onclick="softDeleteDoc('${d.id}')"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
             </div>
           </div>`).join('') || `<div class="small text-muted">No pages yet.</div>`;
       const sPages = document.getElementById('side-pages');
-      sPages && (sPages.innerHTML = pagesHTML);
+      if (sPages) sPages.innerHTML = pagesHTML;
 
       // Mirror into offcanvas (mobile)
       const ldRecent = document.getElementById('ld-recent');
@@ -476,17 +538,17 @@
     }
 
     // Shared actions
-    window.toggleFav = async (id) => { await storage.toggleFavorite(id); await loadSidebar(); };
+    window.toggleFav = async (id) => { await storage.toggleFavorite?.(id); await loadSidebar(); };
     window.softDeleteDoc = async (id) => {
       if (!confirm('Move this item to Trash?')) return;
-      await storage.softDeleteDocument(id);
+      await storage.softDeleteDocument?.(id);
       await loadSidebar();
       toast('Moved to Trash','secondary');
     };
     window.openDoc = async (id) => {
       try {
-        const doc = await storage.getDocument(id);
-        if (doc) { doc.lastOpened = new Date().toISOString(); await storage.saveDocument(doc); }
+        const doc = await storage.getDocument?.(id);
+        if (doc) { doc.lastOpened = new Date().toISOString(); await storage.saveDocument?.(doc); }
         await window.activity?.logDocOpened?.(doc || { id, title:'', type:'' });
       } catch(e){}
       location.href = `reader.html?doc=${encodeURIComponent(id)}`;
@@ -517,7 +579,7 @@
     };
 
     async function loadNotesList(){
-      const all = (await storage.getMeetingNotes())?.filter(n => (n.type||'') === 'convention' || (n.type||'').toLowerCase().includes('convention')) || [];
+      const all = (await storage.getMeetingNotes?.())?.filter(n => (n.type||'') === 'convention' || (n.type||'').toLowerCase().includes('convention')) || [];
       const box = document.getElementById('meeting-notes-list');
       if (!all.length) { box.innerHTML = `<div class="text-muted">No notes yet.</div>`; return; }
       box.innerHTML = all
@@ -525,19 +587,19 @@
         .map(n => `
           <div class="note-item" data-id="${n.id}">
             <div class="d-flex justify-content-between">
-              <div class="fw-semibold">${n.title || 'Untitled'}</div>
+              <div class="fw-semibold">${(n.title || 'Untitled').replace(/[&<>]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]))}</div>
               <div class="small-muted">${new Date(n.updatedAt||n.createdAt).toLocaleString()}</div>
             </div>
             <div class="small mt-1">${(n.content||'').replace(/[<>&]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]))}</div>
             <div class="d-flex gap-2 mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="editConv('${n.id}')"><i class="fa-regular fa-pen-to-square"></i> Edit</button>
-              <button class="btn btn-sm btn-outline-danger" onclick="delConv('${n.id}')"><i class="fa-regular fa-trash-can"></i></button>
+              <button class="btn btn-sm btn-outline-primary" onclick="editConv('${n.id}')" title="Edit"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i> Edit</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="delConv('${n.id}')" title="Delete" aria-label="Delete"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
             </div>
           </div>
         `).join('');
     }
     window.editConv = async (id) => {
-      const all = await storage.getMeetingNotes() || [];
+      const all = (await storage.getMeetingNotes?.()) || [];
       const n = all.find(x=>x.id===id); if(!n) return;
       document.getElementById('meeting-title').value = n.title || '';
       document.getElementById('meeting-date').value = (n.date||'').slice(0,10);
@@ -547,7 +609,7 @@
     };
     window.delConv = async (id) => {
       if (!confirm('Delete this note?')) return;
-      await storage.deleteMeetingNote(id);
+      await storage.deleteMeetingNote?.(id);
       loadNotesList();
       toast('Deleted','danger');
     };
@@ -560,23 +622,22 @@
         .map((s,i)=>`
           <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 shadow-sm">
             <div>
-              <div class="fw-semibold">${s.title||'Session'}</div>
-              <div class="text-muted small">${s.speaker||'-'} · ${s.theme||'-'}</div>
+              <div class="fw-semibold">${(s.title||'Session').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]))}</div>
+              <div class="text-muted small">${(s.speaker||'-').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]))} · ${(s.theme||'-').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]))}</div>
               <div class="text-muted small">${s.date||'-'} ${s.time||''}</div>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="schedule.editConventionSession?.(${i})"><i class="fa-regular fa-pen-to-square"></i></button>
-              <button class="btn btn-outline-danger" onclick="schedule.deleteConventionSession?.(${i})"><i class="fa-regular fa-trash-can"></i></button>
+              <button class="btn btn-outline-primary" onclick="schedule.editConventionSession?.(${i})" title="Edit session" aria-label="Edit session"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button>
+              <button class="btn btn-outline-danger" onclick="schedule.deleteConventionSession?.(${i})" title="Delete session" aria-label="Delete session"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
             </div>
           </div>`).join('');
     }
-    
 
     // Wire schedule → page
     const origLoad = schedule.loadConventionSessions?.bind(schedule);
     schedule.loadConventionSessions = async () => {
       await origLoad?.();
-      const s = await storage.getSettings();
+      const s = await storage.getSettings?.() || {};
       const list = s.convention?.sessions || [];
       renderSessions(list);
       document.getElementById('convention-enabled').checked = !!s.convention?.enabled;
@@ -586,19 +647,19 @@
     };
 
     document.getElementById('convention-enabled')?.addEventListener('change', async (e)=>{
-      const s = await storage.getSettings();
+      const s = (await storage.getSettings?.()) || {};
       s.convention = s.convention || {};
       s.convention.enabled = !!e.target.checked;
-      await storage.saveSettings(s);
+      await storage.saveSettings?.(s);
       document.getElementById('convention-config').style.display = s.convention.enabled ? 'block' : 'none';
     });
     document.getElementById('convention-start')?.addEventListener('change', async (e)=>{
-      const s = await storage.getSettings(); s.convention = s.convention || {};
-      s.convention.startISO = e.target.value || ''; await storage.saveSettings(s);
+      const s = (await storage.getSettings?.()) || {}; s.convention = s.convention || {};
+      s.convention.startISO = e.target.value || ''; await storage.saveSettings?.(s);
     });
     document.getElementById('convention-end')?.addEventListener('change', async (e)=>{
-      const s = await storage.getSettings(); s.convention = s.convention || {};
-      s.convention.endISO = e.target.value || ''; await storage.saveSettings(s);
+      const s = (await storage.getSettings?.()) || {}; s.convention = s.convention || {};
+      s.convention.endISO = e.target.value || ''; await storage.saveSettings?.(s);
     });
     document.getElementById('btn-add-session')?.addEventListener('click', ()=> {
       schedule.editConventionSession?.(-1);
@@ -607,7 +668,7 @@
     // Library Drawer
     async function openLibrary(){
       try {
-        const list = await storage.getDocuments() || [];
+        const list = (await storage.getDocuments?.()) || [];
         const active = list.filter(d => !d.deletedAt);
         const box = document.getElementById('library-list');
         if (!active.length) box.innerHTML = `<div class="text-muted">Your library is empty.</div>`;
@@ -615,11 +676,11 @@
           box.innerHTML = active.map(d => `
             <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2 shadow-sm">
               <div>
-                <div class="fw-semibold">${d.title || '(Untitled)'}</div>
+                <div class="fw-semibold">${(d.title || '(Untitled)').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]))}</div>
                 <div class="text-muted small">${(d.type || '').toUpperCase()} · ${new Date(d.updatedAt || d.createdAt || Date.now()).toLocaleString()}</div>
               </div>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')"><i class="fa-solid fa-folder-open"></i></button>
+                <button class="btn btn-outline-primary" onclick="openDoc('${d.id}')" title="Open" aria-label="Open"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></button>
               </div>
             </div>`).join('');
         }
@@ -628,7 +689,7 @@
     }
     window.openLibrary = openLibrary;
 
-    // Auto-open after import (from reader.*)
+    // Auto-open after import
     window.onDocumentImported = (doc) => { if (doc?.id) openDoc(doc.id); };
 
     // Mirror right notes to offcanvas when opened
@@ -639,7 +700,7 @@
       if (src && dst) dst.innerHTML = src.innerHTML;
     });
 
-    // Init
+    // Boot
     (async () => {
       try { if (typeof storage.init === 'function') await storage.init(); } catch(e){}
       await schedule.init?.();
@@ -648,6 +709,28 @@
       await notes.init?.();
       app.bindSlashMenu?.();
       await loadNotesList();
+    })();
+  </script>
+
+  <!-- Bottom nav: set active to Meetings on this page -->
+  <script>
+    (function(){
+      const file = (location.pathname.split('/').pop() || '').toLowerCase();
+      const map = {
+        'index.html':'home', 'app.html':'home',
+        'library.html':'library',
+        'notes.html':'notes',
+        'meetings.html':'meetings',
+        'reader.html':'reader',
+        'settings.html':'settings',
+        'convention.html':'meetings'
+      };
+      const current = map[file];
+      if (current) {
+        document.querySelectorAll('.bottom-nav a').forEach(a=>{
+          if (a.dataset.page === current) a.classList.add('active');
+        });
+      }
     })();
   </script>
 </body>

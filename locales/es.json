@@ -1,0 +1,56 @@
+{
+  "quick_actions": "Acciones rápidas",
+  "import": "Importar",
+  "continue": "Continuar",
+  "record_talk": "Grabar discurso",
+
+  "study_planner": "Plan de estudio",
+  "add": "Añadir",
+  "today": "Hoy",
+  "this_week": "Esta semana",
+  "later": "Más tarde",
+  "all": "Todo",
+
+  "upcoming": "Próximos",
+  "enable_alerts": "Activar avisos",
+
+  "focus_timer": "Temporizador de enfoque",
+  "stats_streak": "Estadísticas y racha",
+
+  "smart_folders": "Carpetas inteligentes",
+  "open_notes": "Abrir notas",
+  "tags": "Etiquetas",
+  "from_highlights": "De los resaltados recientes",
+
+  "masonry": "Resaltados en mosaico",
+  "recent_quotes": "Tus citas y notas recientes",
+
+  "quick_capture": "Captura rápida",
+  "clear": "Borrar",
+  "save": "Guardar",
+
+  "schedule": "Agenda",
+  "meetings": "Reuniones",
+  "convention": "Asamblea",
+  "home": "Inicio",
+  "library": "Biblioteca",
+  "notes": "Notas",
+  "reader": "Lector",
+  "settings": "Ajustes",
+
+  "import_documents": "Importar documentos",
+  "drag_drop": "Arrastra y suelta archivos aquí",
+  "choose_files": "Elegir archivos",
+  "recently_added": "Añadidos recientemente",
+  "done": "Hecho",
+
+  "add_task": "Añadir tarea",
+  "title": "Título",
+  "when": "Cuándo",
+  "cancel": "Cancelar",
+
+  "login": "Iniciar sesión",
+  "register": "Registrarse",
+  "logout": "Cerrar sesión",
+  "sync_now": "Sincronizar ahora"
+}

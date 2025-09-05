@@ -1,0 +1,56 @@
+{
+  "quick_actions": "Quick Actions",
+  "import": "Import",
+  "continue": "Continue",
+  "record_talk": "Record Talk",
+
+  "study_planner": "Study Planner",
+  "add": "Add",
+  "today": "Today",
+  "this_week": "This Week",
+  "later": "Later",
+  "all": "All",
+
+  "upcoming": "Upcoming",
+  "enable_alerts": "Enable alerts",
+
+  "focus_timer": "Focus Timer",
+  "stats_streak": "Stats & Streak",
+
+  "smart_folders": "Smart Folders",
+  "open_notes": "Open Notes",
+  "tags": "Tags",
+  "from_highlights": "From recent highlights",
+
+  "masonry": "Masonry Highlights",
+  "recent_quotes": "Your recent quotes & notes",
+
+  "quick_capture": "Quick Capture",
+  "clear": "Clear",
+  "save": "Save",
+
+  "schedule": "Schedule",
+  "meetings": "Meetings",
+  "convention": "Convention",
+  "home": "Home",
+  "library": "Library",
+  "notes": "Notes",
+  "reader": "Reader",
+  "settings": "Settings",
+
+  "import_documents": "Import documents",
+  "drag_drop": "Drag & drop files here",
+  "choose_files": "Choose files",
+  "recently_added": "Recently added",
+  "done": "Done",
+
+  "add_task": "Add Task",
+  "title": "Title",
+  "when": "When",
+  "cancel": "Cancel",
+
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "sync_now": "Sync now"
+}

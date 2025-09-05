@@ -1,177 +1,213 @@
 // js/dashboard.js
-import * as reminders from './reminders.js';
+import { storage } from './storage.js';
 
-const $ = s => document.querySelector(s);
+const dashToast = (msg, type='primary') =>
+  (window.app?.toast?.(msg, type)) ?? alert(msg);
 
-function toast(msg, type='primary'){
-  const el = $('#app-toast'); const body = $('#app-toast-body');
-  if (!el || !body) return alert(msg);
-  body.textContent = msg;
-  el.className = `toast align-items-center text-bg-${type} border-0 shadow`;
-  new bootstrap.Toast(el, { autohide:true, delay:1500 }).show();
-}
+export const dashboard = (()=>{
+  const esc = (s='') => String(s).replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
 
-/* ---------- Quick Actions ---------- */
-(function quickActions(){
-  // Continue: open most recent active doc
-  $('#qa-continue')?.addEventListener('click', async ()=>{
-    try {
-      await window.storage?.init?.();
-      const list = await window.storage.getRecentDocuments?.(1) || [];
-      const d = list[0];
-      if (!d) return toast('No recent items','secondary');
-      location.href = `reader.html?doc=${encodeURIComponent(d.id)}`;
-    } catch { toast('Failed','danger'); }
-  });
+  async function refresh(){
+    try { await storage.init?.(); } catch {}
+    await Promise.all([
+      renderSmartFolders(),
+      renderTags(),
+      renderMasonry(),
+      renderStats()
+    ]).catch(e => console.error(e));
+  }
 
-  $('#qa-import')?.addEventListener('click', ()=>{
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.epub,.pdf,.docx,.txt,.md';
-    input.onchange = async ()=>{
-      const f = input.files?.[0]; if (!f) return;
-      try {
-        const doc = await window.storage.importFile(f);
-        location.href = `reader.html?doc=${encodeURIComponent(doc.id)}`;
-      } catch { toast('Import failed','danger'); }
-    };
-    input.click();
-  });
+  async function renderSmartFolders(){
+    const box = document.getElementById('smart-folders'); if (!box) return;
+    try{
+      const sfs = (await storage.getSmartFolders?.()) || [];
+      box.innerHTML = sfs.length
+        ? sfs.map(sf=>`
+            <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+              <div class="text-truncate">${esc(sf.title||'Untitled')}</div>
+              <a class="btn btn-sm btn-outline-primary" href="notes.html">Open</a>
+            </div>
+          `).join('')
+        : `<div class="text-muted">No smart folders yet.</div>`;
+    }catch{
+      box.innerHTML = `<div class="text-muted">No smart folders yet.</div>`;
+    }
+  }
+
+  async function renderTags(){
+    const box = document.getElementById('tag-cloud'); if (!box) return;
+    try{
+      let tags = [];
+      if (storage.getRecentTags) {
+        tags = await storage.getRecentTags(30); // [{name,count}]
+      } else {
+        const anns = (await storage.getAllAnnotations?.()) || [];
+        const freq = {};
+        anns.forEach(a => (a.tags||[]).forEach(t => freq[t]=(freq[t]||0)+1));
+        tags = Object.entries(freq).map(([name,count])=>({name,count}))
+               .sort((a,b)=>b.count-a.count).slice(0,20);
+      }
+      box.innerHTML = tags.length
+        ? tags.map(t=>`<span class="tag-chip">${esc(t.name)}${t.count?` <span class="small text-muted">(${t.count})</span>`:''}</span>`).join('')
+        : `<span class="text-muted">No tags yet.</span>`;
+    }catch{
+      box.innerHTML = `<span class="text-muted">No tags yet.</span>`;
+    }
+  }
+
+  async function renderMasonry(){
+    const box = document.getElementById('masonry'); if (!box) return;
+    try{
+      let items = [];
+      if (storage.getRecentHighlights) {
+        items = await storage.getRecentHighlights(30); // [{text, docTitle}]
+      } else if (storage.getAllAnnotations) {
+        const anns = await storage.getAllAnnotations();
+        items = (anns||[]).map(a => ({
+          text: a.text || a.quote || a.note || '',
+          docTitle: a.docTitle || a.title || ''
+        })).filter(i=>i.text.trim());
+      }
+      box.innerHTML = items?.length
+        ? items.map(h=>`
+            <div class="h-card">
+              <div class="h-body">
+                <div class="h-quote">"${esc(h.text||'')}"</div>
+                <div class="h-doc">${esc(h.docTitle||'')}</div>
+              </div>
+            </div>`).join('')
+        : `<div class="text-muted small">No highlights yet.</div>`;
+    }catch{
+      box.innerHTML = `<div class="text-muted small">No highlights yet.</div>`;
+    }
+  }
+
+  // NEW: Stats & Streak
+  async function renderStats(){
+    const box = document.getElementById('stats-box'); if (!box) return;
+    try{
+      const [docs,favs,notes,anns] = await Promise.all([
+        storage.getDocuments?.()   || [],
+        storage.getFavorites?.()   || [],
+        storage.getMeetingNotes?.()|| [],
+        storage.getAllAnnotations?.() || []
+      ]);
+
+      const totals = {
+        docs: (docs||[]).length,
+        favorites: (favs||[]).length,
+        notes: (notes||[]).length,
+        highlights: (anns||[]).length
+      };
+
+      // Build activity counts per day (last 14 days)
+      const counts = {};
+      const add = (iso)=>{
+        if (!iso) return;
+        const d = new Date(iso);
+        if (isNaN(d)) return;
+        const key = d.toISOString().slice(0,10);
+        counts[key] = (counts[key]||0) + 1;
+      };
+
+      (docs||[]).forEach(d=> add(d.updatedAt || d.createdAt));
+      (notes||[]).forEach(n=> add(n.updatedAt || n.createdAt));
+      (anns||[]).forEach(a=> add(a.updatedAt || a.createdAt));
+
+      const days = [];
+      const today = new Date(); today.setHours(0,0,0,0);
+      for (let i=13; i>=0; i--){
+        const dd = new Date(today); dd.setDate(today.getDate()-i);
+        const key = dd.toISOString().slice(0,10);
+        days.push({ key, count: counts[key]||0 });
+      }
+
+      // Streak (consecutive days from today with any activity)
+      let streak = 0;
+      for (let i=days.length-1; i>=0; i--){
+        if (days[i].count > 0) streak++;
+        else break;
+      }
+
+      const max = Math.max(...days.map(d=>d.count), 1);
+      const bars = days.map(d=>{
+        const h = Math.round((d.count / max) * 36) + 2; // min height 2px
+        return `<div title="${d.key}: ${d.count}"
+                    style="width:8px;height:${h}px;border-radius:4px;background:currentColor;opacity:${d.count?0.9:0.25}"></div>`;
+      }).join('');
+
+      box.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-baseline gap-2">
+            <div class="display-6 fw-bold" aria-label="Current streak">${streak}</div>
+            <div class="small text-muted">day streak</div>
+          </div>
+          <div class="ms-auto d-flex align-items-end gap-1" aria-hidden="true">${bars}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <span class="badge text-bg-light">Docs: ${totals.docs}</span>
+          <span class="badge text-bg-light">Notes: ${totals.notes}</span>
+          <span class="badge text-bg-light">Highlights: ${totals.highlights}</span>
+          <span class="badge text-bg-light">Favorites: ${totals.favorites}</span>
+        </div>
+      `;
+    }catch(e){
+      console.error(e);
+      box.innerHTML = `<div class="text-danger">Failed to load stats.</div>`;
+    }
+  }
+
+  return { refresh };
 })();
 
-/* ---------- Upcoming (Meetings + Convention + Planner) ---------- */
-async function renderUpcoming(){
-  const box = $('#upcoming-list'); if (!box) return;
-  try {
-    await reminders.init(window.storage); // safe re-entry
-    const rows = await reminders.listUpcoming(8);
-    box.innerHTML = rows.length ? rows.map(r=>`
-      <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-1">
-        <div><i class="fa-regular fa-bell me-2"></i>${r.title}</div>
-        <div class="text-muted">${new Date(r.whenISO).toLocaleString()}</div>
-      </div>`).join('') : `<div class="text-muted">Nothing upcoming.</div>`;
-  } catch (e) {
-    console.warn(e);
-    box.innerHTML = `<div class="text-danger">Failed to load.</div>`;
-  }
-}
-renderUpcoming();
+// Expose & boot
+window.dashboard = dashboard;
+document.addEventListener('DOMContentLoaded', ()=> dashboard.refresh());
 
-// Enable alerts
-document.getElementById('btn-enable-notifs')?.addEventListener('click', async ()=>{
-  if (!reminders.isSupported()){
-    toast('Notifications need HTTPS or PWA install','danger'); return;
-  }
-  const r = await reminders.requestPermission();
-  if (!r.ok){
-    toast('Permission denied or blocked','danger'); return;
-  }
-  await reminders.refresh(window.storage);
-  toast('Alerts enabled','success');
+/* ---------- Quick Capture (fixed: no `$`) ---------- */
+const qcText = document.getElementById('qc-text');
+
+document.getElementById('qc-clear')?.addEventListener('click', ()=>{
+  if (qcText) qcText.value = '';
 });
 
-/* ---------- Tag cloud from annotations ---------- */
-async function renderTagCloud(){
-  const box = $('#tag-cloud'); if (!box) return;
-  try {
-    await window.storage?.init?.();
-    const anns = await (window.storage.getAllAnnotations?.() || []);
-    const rx = /(^|\s)#([a-z0-9_]+)/ig;
-    const map = new Map();
-    for (const a of anns){
-      const txt = (a.quote||a.text||a.note||'')+'';
-      let m; while ((m = rx.exec(txt))){
-        const tag = m[2].toLowerCase();
-        map.set(tag, (map.get(tag)||0)+1);
-      }
-    }
-    const items = [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,18);
-    box.innerHTML = items.length
-      ? items.map(([t,n])=>`<span class="tag-chip">#${t} · ${n}</span>`).join(' ')
-      : `<span class="text-muted">No tags yet. Add #tags in your notes.</span>`;
-  } catch {
-    box.innerHTML = `<span class="text-danger">Failed to load tags</span>`;
-  }
-}
-renderTagCloud();
-
-/* ---------- Masonry highlights ---------- */
-async function renderMasonry(){
-  const box = $('#masonry'); if (!box) return;
-  try {
-    await window.storage?.init?.();
-    const docs = await window.storage.getDocuments?.() || [];
-    const byId = Object.fromEntries(docs.map(d=>[d.id,d]));
-    const anns = await (window.storage.getAllAnnotations?.() || []);
-    const recent = anns.filter(a=>(a.quote||a.text||a.note)).sort((a,b)=> new Date(b.updatedAt||b.createdAt||0) - new Date(a.updatedAt||a.createdAt||0)).slice(0,18);
-    const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-    box.innerHTML = recent.length ? recent.map(a=>{
-      const doc = byId[a.documentId];
-      return `<div class="h-card">
-        <div class="h-body">
-          <div class="h-quote">“${esc(a.quote||a.text||a.note)}”</div>
-          <div class="h-doc mt-1">${esc(doc?.title||'(Untitled)')}</div>
-          ${doc?.id ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="location.href='reader.html?doc=${encodeURIComponent(doc.id)}'"><i class="fa-solid fa-forward"></i> Open book</button>`:''}
-        </div>
-      </div>`;
-    }).join('') : `<div class="text-muted">No highlights yet.</div>`;
-  } catch {
-    box.innerHTML = `<div class="text-danger">Failed to load highlights</div>`;
-  }
-}
-renderMasonry();
-
-/* ---------- Stats & Streak from focus sessions ---------- */
-async function renderStats(){
-  const box = $('#stats-box'); if (!box) return;
-  try {
-    const list = (await localforage.getItem('focus_sessions_v1')) || [];
-    if (!list.length){ box.textContent = 'No focus sessions yet.'; return; }
-    const now = new Date();
-    const dayKey = d => new Date(new Date(d).toDateString()).getTime();
-    const map = new Map();
-    for (const s of list){
-      const k = dayKey(s.at);
-      map.set(k, (map.get(k)||0) + (s.minutes||0));
-    }
-    // streak: consecutive days with >0 minutes, ending today
-    let streak = 0;
-    for (let i=0;;i++){
-      const d = new Date(); d.setDate(now.getDate()-i); d.setHours(0,0,0,0);
-      const k = d.getTime();
-      if ((map.get(k)||0) > 0) streak++;
-      else break;
-    }
-    // last 7 days mins
-    let wk = 0;
-    for (let i=0;i<7;i++){
-      const d = new Date(); d.setDate(now.getDate()-i); d.setHours(0,0,0,0);
-      wk += (map.get(d.getTime())||0);
-    }
-    box.innerHTML = `
-      <div>7-day minutes: <b>${wk}</b></div>
-      <div>Streak: <b>${streak}</b> day(s)</div>
-      <div class="text-muted small mt-1">Finish focus timers to grow these.</div>
-    `;
-  } catch { box.textContent = 'Failed to load stats.'; }
-}
-renderStats();
-document.addEventListener('focus:updated', renderStats);
-
-/* ---------- Quick Capture ---------- */
-document.getElementById('qc-clear')?.addEventListener('click', ()=> { const t=$('#qc-text'); if(t) t.value=''; });
 document.getElementById('qc-save')?.addEventListener('click', async ()=>{
-  const ta = $('#qc-text'); const text = (ta?.value||'').trim();
-  if (!text) return toast('Nothing to save','secondary');
-  await window.storage?.init?.();
-  // Save into (or create) "Scratchpad"
-  const docs = await window.storage.getDocuments?.() || [];
-  let doc = docs.find(d=>d.title==='Scratchpad' && !d.deletedAt);
-  if (!doc){
-    doc = await window.storage.saveDocument({ id: window.storage.generateId('doc'), title:'Scratchpad', type:'txt', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+  const text = (qcText?.value || '').trim();
+  if (!text) return dashToast('Nothing to save','secondary');
+
+  try {
+    await storage.init?.();
+
+    // Save into (or create) "Scratchpad"
+    const docs = await storage.getDocuments?.() || [];
+    let doc = docs.find(d=> d.title==='Scratchpad' && !d.deletedAt);
+    if (!doc){
+      doc = await storage.saveDocument({
+        id: storage.generateId('doc'),
+        title: 'Scratchpad',
+        type: 'txt',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    const anns = await storage.getAnnotations(doc.id) || [];
+    anns.push({
+      id: storage.generateId('ann'),
+      documentId: doc.id,
+      kind: 'note',
+      text,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    await storage.saveAnnotations(doc.id, anns);
+
+    if (qcText) qcText.value = '';
+    dashToast('Saved','success');
+
+    // Update dashboard panels (tags, masonry, stats)
+    window.dashboard?.refresh?.();
+  } catch (e) {
+    console.error(e);
+    dashToast('Save failed','danger');
   }
-  const anns = await window.storage.getAnnotations(doc.id) || [];
-  anns.push({ id: window.storage.generateId('ann'), documentId: doc.id, kind:'note', text, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
-  await window.storage.saveAnnotations(doc.id, anns);
-  ta.value = ''; toast('Saved','success');
 });
